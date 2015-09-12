@@ -5,13 +5,13 @@ import com.google.gson.GsonBuilder;
 
 public class Request
 {
-	Integer type;
-	Double srcLat = 0.0;
-	Double srcLon = 0.0;
-	Double destLat = 0.0;
-	Double destLon = 0.0;
-	Integer linija = 0;
-	String smer = "";
+	Integer type = null;
+	Double srcLat = null;
+	Double srcLon = null;
+	Double destLat = null;
+	Double destLon = null;
+	Integer linija = null;
+	String smer = null;
 	
 	
 	public Request() {}
