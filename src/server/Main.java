@@ -14,7 +14,7 @@ public class Main
 		ServerLog log = ServerLog.getInstance();
 		ServerSocket serverSocket = null;
 		
-		log.write("PlaninarijumX Server started");
+		log.write("Bus++ Server started");
 		
 		try
 		{
@@ -23,7 +23,7 @@ public class Main
 		{
 			log.write("Exception caught when trying to listen on port " + ServerConsts.PORT);
 			log.write(e.getMessage());
-			log.write("PlaninarijumX Server terminated");
+			log.write("Bus++ Server terminated");
 			
 			log.freeResources();
 			System.exit(-1);
@@ -54,7 +54,7 @@ public class Main
 				
 				log.write("Exception caught while trying to accept connection on: " + ServerConsts.PORT);
 				log.write(e.getMessage());
-				log.write("PlaninarijumX Server terminated");
+				log.write("Bus++ Server terminated");
 				
 				log.freeResources();
 				System.exit(-1);

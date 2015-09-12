@@ -5,19 +5,21 @@ import com.google.gson.GsonBuilder;
 
 public class Request
 {
-	int type;
-	double srcLat = 0.0;
-	double srcLon = 0.0;
-	double destLat = 0.0;
-	double destLon = 0.0;
-	int linija = 0;
+	Integer type;
+	Double srcLat = 0.0;
+	Double srcLon = 0.0;
+	Double destLat = 0.0;
+	Double destLon = 0.0;
+	Integer linija = 0;
 	String smer = "";
 	
 	
 	public Request() {}
-	
-	public Request(int type, double srcLat, double srcLon, double destLat, double destLon, int linija, String smer)
+
+	public Request(Integer type, Double srcLat, Double srcLon, Double destLat, 
+			Double destLon, Integer linija, String smer)
 	{
+		super();
 		this.type = type;
 		this.srcLat = srcLat;
 		this.srcLon = srcLon;
@@ -30,7 +32,7 @@ public class Request
 	@Override
 	public String toString()
 	{
-		Gson gson = new GsonBuilder().serializeNulls().create();
+		Gson gson = new GsonBuilder().create();
 		
 		return gson.toJson(this);
 	}
