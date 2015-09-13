@@ -5,7 +5,8 @@ import com.google.gson.GsonBuilder;
 
 public class DatumVremeStanica
 {
-	public Integer stanica = null; //id stanice na koju se odnosi vreme dolaska
+	public Integer stanica = null; 		//id stanice na koju se odnosi vreme dolaska
+	public Integer korekcija = null; 	//korekcija za klasican red voznje (vreme koje je potrebno busu od pocetne stanice do stanice stanica)
 	public int sekund = 0;
 	public int minut = 0;
 	public int sat = 0;
