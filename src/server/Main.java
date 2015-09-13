@@ -4,6 +4,8 @@ import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
 
+import com.google.gson.*;
+
 import strukture.*;
 
 public class Main
@@ -11,6 +13,24 @@ public class Main
 	
 	public static void main(String[] args)
 	{
+		/*Gson gson = new GsonBuilder().create();
+		Integer niz[] = new Integer[100];
+		
+		niz[0] = 0;
+		
+		niz[10] = 10;
+		
+		niz[99] = 100;
+		
+		ArrayList<Integer> wat = new ArrayList<>();*/
+		
+		/*wat.add(1, 2);
+		wat.add(10, 3);
+		wat.add(100, 4);*/
+		
+		//System.out.println(gson.toJson(1));
+		
+		
 		ServerLog log = ServerLog.getInstance();
 		ServerSocket serverSocket = null;
 		
