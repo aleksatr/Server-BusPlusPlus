@@ -15,6 +15,13 @@ public class Cvor
 	
 	public Cvor() {}
 	
+	public Cvor(Cvor prototype)
+	{
+		this.id = prototype.id;
+		this.naziv = prototype.naziv;
+		this.lat = prototype.lat;
+	}
+	
 	public Cvor(Integer id, String naziv, Double lat, Double lon)
 	{
 		this.id = id;
@@ -26,11 +33,15 @@ public class Cvor
 
 	public void dodajVezu(Linija linija, Integer weight, Cvor destination)
 	{
-		veze.add(new Veza(destination, weight, linija));
+		if(veze != null)
+			veze.add(new Veza(destination, weight, linija));
 	}
 	
 	public Veza vratiVezu(Linija l)
-	{
+	{	
+		if(veze == null)
+			return null;
+		
 		Veza v = null;
 		
 		for(int i = 0; i < veze.size(); ++i)

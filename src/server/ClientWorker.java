@@ -10,20 +10,22 @@ import strukture.*;
 
 public class ClientWorker implements Runnable
 {
-	private Socket clientSocket;
+	private Socket clientSocket = null;
 	private ServerLog log;
 	private Pleaser pleaser = null;
+	private int id;
 	
-	public ClientWorker(Socket client)
+	public ClientWorker(int id/*Socket client*/)
 	{
-		clientSocket = client;
+		this.id = id;
+		//clientSocket = client;
 		this.log = ServerLog.getInstance();
 	}
 
 	@Override
 	public void run()
 	{
-		InputStream istream = null;
+		/*InputStream istream = null;
 		OutputStream ostream = null;
 	    
 	    try
@@ -47,7 +49,7 @@ public class ClientWorker implements Runnable
 		    } catch (IOException e) {
 		    	log.write("Exception caught while trying to close client socket");
 		    }
-	    }
+	    }*/
 	}
 	
 }

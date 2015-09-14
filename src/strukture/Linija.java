@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 
 public class Linija
 {
+	public Integer id = null;
 	public String broj = null;
 	public String smer = null;
 	public String naziv = null;
@@ -12,7 +13,7 @@ public class Linija
 	
 	public Linija() {}
 	
-	public Linija(String broj, String smer, String naziv, Cvor pocetnaStanica)
+	public Linija(Integer id, String broj, String smer, String naziv, Cvor pocetnaStanica)
 	{
 		this.broj = broj;
 		this.smer = smer;
