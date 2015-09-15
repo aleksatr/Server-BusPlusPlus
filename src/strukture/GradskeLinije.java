@@ -5,7 +5,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
+import java.util.*;
 
 import server.*;
 
@@ -39,7 +39,10 @@ public class GradskeLinije
 	    	maxId = rs.getInt(1);
 	    }
 	    else
+	    {
+	    	System.out.println("select max(id) from LINIJA; query nije vratio rezultat");
 	    	throw new Exception("select max(id) from LINIJA; query nije vratio rezultat");
+	    }
 	    
 	    linije = new Linija[maxId + 1];
 	    
@@ -56,10 +59,6 @@ public class GradskeLinije
 	    	//dummy cvor da sacuva ID za pravi cvor koji se tek kasnije ucitava iz baze i kreira
 	    	Cvor pocetnaStanica = new Cvor(stanicaId, null, null, null); 
 	    	linije[id] = new Linija(id, broj, smer, naziv, pocetnaStanica);
-	    	//linije.add(new Linija(id, broj, smer, naziv, pocetnaStanica));
-	    	//System.out.println("name = " + rs.getString("name"));
-	    	//System.out.println("id = " + rs.getInt("id"));
-	    	//int maxId = rs.getInt(1);
 	    }
 	    
 	    try
@@ -73,4 +72,5 @@ public class GradskeLinije
 	    	ServerLog.getInstance().write(e.getMessage());
 	    }
 	}
+
 }

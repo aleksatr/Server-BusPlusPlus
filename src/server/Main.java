@@ -4,7 +4,11 @@ import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 import com.google.gson.*;
 
@@ -12,10 +16,10 @@ import strukture.*;
 
 public class Main
 {
-	private static Graf grafPrototype;
+	//private static Graf grafPrototype;
 	private static LinkedBlockingQueue<Socket> requestsQueue = new LinkedBlockingQueue<>(ServerConsts.REQUEST_QUEUE_SIZE);
 	private static ArrayList<Thread> threadPool = new ArrayList<>();
-	private static Graf grafPool[] = new Graf[ServerConsts.WORKER_THREAD_POOL_SIZE];
+	//private static Graf grafPool[] = new Graf[ServerConsts.WORKER_THREAD_POOL_SIZE];
 	
 	private static void populateThreadPool()
 	{
@@ -24,17 +28,18 @@ public class Main
 		
 		for(int i = 0; i < ServerConsts.WORKER_THREAD_POOL_SIZE; ++i)
 		{
-			workerThread = new ClientWorker(i);
+			workerThread = new ClientWorker(i, requestsQueue);
 			t = new Thread(workerThread);
 			threadPool.add(t);
 			t.start();
 		}
 	}
 	
-	private static void createGrafPrototype() throws ClassNotFoundException, SQLException, Exception
+	/*private static Graf createGrafPrototype() throws ClassNotFoundException, SQLException, Exception
 	{
-		grafPrototype = new Graf(ServerConsts.SQLITE_GRAF_DB_NAME, ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
-	}
+		Graf grafPrototype = new Graf(ServerConsts.SQLITE_GRAF_DB_NAME, ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
+		return grafPrototype;
+	}*/
 	
 	public static void main(String[] args)
 	{
@@ -42,7 +47,7 @@ public class Main
 		ServerLog log = ServerLog.getInstance();
 		log.write("Bus++ Server started");
 		
-		try
+		/*try
 		{
 			createGrafPrototype();
 		} catch(Exception e)
@@ -55,7 +60,7 @@ public class Main
 			
 			log.freeResources();
 			System.exit(-1);
-		}
+		}*/
 		
 		populateThreadPool();
 		

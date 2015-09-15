@@ -14,12 +14,7 @@ public class Graf
 	private ArrayList<Cvor> cvorovi = new ArrayList<>();
 	private GradskeLinije gl;
 	
-	public Graf(Graf prototype)
-	{
-		this.gl = new GradskeLinije(prototype.gl.linije.length);
-		
-		//...
-	}
+	public Graf() {}
 	
 	public Graf(String grafDBName, String redVoznjeDBName) throws ClassNotFoundException, SQLException, Exception
 	{
@@ -42,13 +37,13 @@ public class Graf
 	    
 	    if(rs.next())
 	    {
-	    	// read the result set
-	    	//System.out.println("name = " + rs.getString("name"));
-	    	//System.out.println("id = " + rs.getInt("id"));
 	    	maxId = rs.getInt(1);
 	    }
 	    else
+	    {
+	    	System.out.println("select max(id) from STANICA; query nije vratio rezultat");
 	    	throw new Exception("select max(id) from STANICA; query nije vratio rezultat");
+	    }
 	    
 	    tempArray = new Cvor[maxId + 1];
 	    
@@ -63,14 +58,13 @@ public class Graf
 	    	double lon = rs.getDouble("lon");
 
 	    	tempArray[id] = new Cvor(id, naziv, lat, lon);
-	    	//linije.add(new Linija(id, broj, smer, naziv, pocetnaStanica));
-	    	//System.out.println("name = " + rs.getString("name"));
-	    	//System.out.println("id = " + rs.getInt("id"));
-	    	//int maxId = rs.getInt(1);
 	    }
 	    
 	    for(int i = 0; i < gl.linije.length; ++i)
-	    	gl.linije[i].pocetnaStanica = tempArray[gl.linije[i].pocetnaStanica.id];
+	    {
+	    	if(gl.linije[i] != null)
+	    		gl.linije[i].pocetnaStanica = tempArray[gl.linije[i].pocetnaStanica.id];
+	    }
 	    
 	    rs = statement.executeQuery("select * from VEZA");
 	    
@@ -83,10 +77,6 @@ public class Graf
 	    	int linijaId = rs.getInt("linija_id");
 
 	    	tempArray[sourceId].dodajVezu(gl.linije[linijaId], weight, tempArray[destId]);;
-	    	//linije.add(new Linija(id, broj, smer, naziv, pocetnaStanica));
-	    	//System.out.println("name = " + rs.getString("name"));
-	    	//System.out.println("id = " + rs.getInt("id"));
-	    	//int maxId = rs.getInt(1);
 	    }
 	    
 	    try
@@ -107,5 +97,28 @@ public class Graf
 	    		tempArray[i] = null;
 	    	}
 	    }
+	}
+	
+	public void pratiLiniju(int linijaId)
+	{
+		Linija l = gl.linije[linijaId];
+		int udaljenost = 0;
+		if(l == null)
+			return;
+		
+		Cvor c = l.pocetnaStanica;
+		Cvor pocetna = c;
+		Veza v = null;
+		
+		System.out.println("Linija:> " + l.toString());
+		System.out.println(c.toString() + " udaljenost = " + udaljenost);
+		while((v = c.vratiVezu(l)) != null)
+		{
+			c = v.destination;
+			udaljenost += v.weight;
+			System.out.println(c.toString() + " udaljenost = " + udaljenost);
+			if(c == pocetna)
+				break;
+		}
 	}
 }

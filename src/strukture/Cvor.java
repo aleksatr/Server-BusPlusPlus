@@ -57,8 +57,9 @@ public class Cvor
 	@Override
 	public String toString()
 	{
-		Gson gson = new GsonBuilder().create();
+		//Gson gson = new GsonBuilder().create();
 		
-		return gson.toJson(this);
+		//return gson.toJson(this);
+		return " " + id +" " +  naziv +" " +  lat +" " +  lon;
 	}
 }

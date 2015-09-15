@@ -15,6 +15,7 @@ public class Linija
 	
 	public Linija(Integer id, String broj, String smer, String naziv, Cvor pocetnaStanica)
 	{
+		this.id = id;
 		this.broj = broj;
 		this.smer = smer;
 		this.naziv = naziv;
@@ -25,8 +26,9 @@ public class Linija
 	@Override
 	public String toString()
 	{
-		Gson gson = new GsonBuilder().create();
+		//Gson gson = new GsonBuilder().create();
 		
-		return gson.toJson(this);
+		//return gson.toJson(this);
+		return id + " " +broj +" " +smer + " " +naziv + " <<" + pocetnaStanica.id +">>";
 	}
 }
