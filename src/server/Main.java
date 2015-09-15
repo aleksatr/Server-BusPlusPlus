@@ -47,22 +47,42 @@ public class Main
 		ServerLog log = ServerLog.getInstance();
 		log.write("Bus++ Server started");
 		
-		/*try
-		{
-			createGrafPrototype();
-		} catch(Exception e)
-		{
-			// if the error message is "out of memory", 
-		    // it probably means no database file is found
-			log.write("Exception caught when trying create grafPrototype from " + ServerConsts.SQLITE_GRAF_DB_NAME);
-			log.write(e.getMessage());
-			log.write("Bus++ Server terminated");
-			
-			log.freeResources();
-			System.exit(-1);
-		}*/
-		
 		populateThreadPool();
+		
+		FileReader dbVerInputStream = null;
+		BufferedReader dbVerBufferedInput = null;
+		
+		try
+		{
+			dbVerInputStream = new FileReader(ServerConsts.DB_VER_FILE);
+			dbVerBufferedInput = new BufferedReader(dbVerInputStream);
+			
+			String verStr = dbVerBufferedInput.readLine();
+			ServerConsts.grafDBVer = Double.parseDouble(verStr);
+			
+			verStr = dbVerBufferedInput.readLine();
+			ServerConsts.rVoznjeDBVer = Double.parseDouble(verStr);
+		} catch (FileNotFoundException e)
+		{
+			log.write("Exception caught when trying to open file " + ServerConsts.DB_VER_FILE);
+			log.write(e.getMessage());
+		} catch (IOException e)
+		{
+			log.write("Exception caught when trying to read file " + ServerConsts.DB_VER_FILE);
+			log.write(e.getMessage());
+		} finally
+		{
+			if(dbVerBufferedInput != null)
+				try
+				{
+					dbVerBufferedInput.close();
+				} catch (IOException e)
+				{
+					log.write("Exception caught when trying to close file " + ServerConsts.DB_VER_FILE);
+					log.write(e.getMessage());
+				}
+		}
+		
 		
 		try
 		{
@@ -79,14 +99,10 @@ public class Main
 		
 		while(true)
 		{
-			//ClientWorker workerThread = null;
 			
 			try
 			{
 				requestsQueue.put(serverSocket.accept());
-				/*workerThread = new ClientWorker(serverSocket.accept());
-				Thread t = new Thread(workerThread);
-				t.start();*/
 			} catch(Exception e)
 			{
 				if(serverSocket != null)

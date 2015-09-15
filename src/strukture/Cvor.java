@@ -11,7 +11,7 @@ public class Cvor
 	public String naziv = null;
 	public Double lat = null;
 	public Double lon = null;
-	public ArrayList<Veza> veze;
+	public transient ArrayList<Veza> veze;
 	
 	public Cvor() {}
 	
@@ -57,9 +57,9 @@ public class Cvor
 	@Override
 	public String toString()
 	{
-		//Gson gson = new GsonBuilder().create();
+		Gson gson = new GsonBuilder().create();
 		
-		//return gson.toJson(this);
-		return " " + id +" " +  naziv +" " +  lat +" " +  lon;
+		return gson.toJson(this);
+		//return " " + id +" " +  naziv +" " +  lat +" " +  lon;
 	}
 }

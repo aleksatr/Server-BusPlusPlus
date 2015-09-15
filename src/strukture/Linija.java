@@ -9,7 +9,7 @@ public class Linija
 	public String broj = null;
 	public String smer = null;
 	public String naziv = null;
-	public Cvor pocetnaStanica = null;
+	public transient Cvor pocetnaStanica = null;
 	
 	public Linija() {}
 	
@@ -26,9 +26,9 @@ public class Linija
 	@Override
 	public String toString()
 	{
-		//Gson gson = new GsonBuilder().create();
+		Gson gson = new GsonBuilder().create();
 		
-		//return gson.toJson(this);
-		return id + " " +broj +" " +smer + " " +naziv + " <<" + pocetnaStanica.id +">>";
+		return gson.toJson(this);
+		//return id + " " +broj +" " +smer + " " +naziv + " <<" + pocetnaStanica.id +">>";
 	}
 }

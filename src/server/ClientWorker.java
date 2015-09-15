@@ -45,8 +45,6 @@ public class ClientWorker implements Runnable
 			return;
 		} catch(ClassNotFoundException e)
 		{
-			// if the error message is "out of memory", 
-		    // it probably means no database file is found
 			log.write("!Thread[" + id + "]~" + " Exception caught when trying create grafPrototype from " + ServerConsts.SQLITE_GRAF_DB_NAME);
 			log.write(e + "");
 			log.write("!Bus++ thread[" + id + "] terminated");
@@ -54,15 +52,13 @@ public class ClientWorker implements Runnable
 			return;
 		} catch(Exception e)
 		{
-			// if the error message is "out of memory", 
-		    // it probably means no database file is found
 			log.write("!!Thread[" + id + "]~" + " Exception caught when trying create grafPrototype from " + ServerConsts.SQLITE_GRAF_DB_NAME);
 			log.write(e + "");
 			log.write("!!Bus++ thread[" + id + "] terminated");
 			
 			return;
 		}
-		
+				
 		InputStream istream = null;
 		OutputStream ostream = null;
 		
@@ -71,53 +67,22 @@ public class ClientWorker implements Runnable
 			try
 			{
 				clientSocket = requestsQueue.take();
-				//System.out.println("Thread["+ id + "] hendluje socket");
 			} catch (InterruptedException e)
 			{
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				log.write("Thread["+ id + "] " + e.getMessage());
 			}
-			int lineID = 0;
+			
 			try
 		    {
 		    	istream = clientSocket.getInputStream();
 		    	ostream = clientSocket.getOutputStream();
 		    	
-		    	BufferedReader in = null;
-		    	PrintWriter out = null;
+		    	pleaser = new Pleaser(this, clientSocket, istream, ostream);
 		    	
-		    	in = new BufferedReader(new InputStreamReader(istream));
-				out = new PrintWriter(ostream);
-				
-				String line = null;
-				
-				try
-				{
-					line = in.readLine();
-					
-					if(line == null)
-					{
-						System.out.println("Thread["+ id + "] line je null");
-						return;
-					}
-					
-					//Request rq = gson.fromJson(line, Request.class);
-					
-					System.out.println(line);
-					
-					lineID = Integer.parseInt(line);
-						
-					
-					System.out.println("Thread["+ id + "] hendluje request");
-					graf.pratiLiniju(lineID);
-					
-				} catch (IOException e)
-				{
-					log.write(e.getMessage());
-				}
+		    	pleaser.please();
 		    } catch (IOException e) 
 		    {
-		    	log.write("failed to create pleaser because of istream and ostream");;
+		    	log.write("Thread["+ id + "] " + "failed to create pleaser because of istream and ostream");;
 		    	log.write(e.getMessage());
 		    }
 		    finally
@@ -126,11 +91,10 @@ public class ClientWorker implements Runnable
 				{
 			    	clientSocket.close();
 			    } catch (IOException e) {
-			    	log.write("Exception caught while trying to close client socket");
+			    	log.write("Thread["+ id + "] " + "Exception caught while trying to close client socket");
 			    }
 		    }
 		}
-		
 		
 		
 		//stavi infinite loop, na pocetak svake iteracije uzmi clientSocket iz reda
@@ -159,6 +123,11 @@ public class ClientWorker implements Runnable
 		    	log.write("Exception caught while trying to close client socket");
 		    }
 	    }*/
+	}
+	
+	public int getId()
+	{
+		return id;
 	}
 	
 }

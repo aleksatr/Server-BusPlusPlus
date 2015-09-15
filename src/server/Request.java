@@ -13,14 +13,13 @@ public class Request
 	public Integer linija = null;
 	public String smer = null;
 	public String message = null;
-	
+	public Double dbVer = null;
 	
 	public Request() {}
 
 	public Request(Integer type, Double srcLat, Double srcLon, Double destLat, 
 			Double destLon, Integer linija, String smer, String message)
 	{
-		super();
 		this.type = type;
 		this.srcLat = srcLat;
 		this.srcLon = srcLon;

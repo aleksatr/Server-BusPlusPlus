@@ -5,6 +5,7 @@ import java.net.*;
 import java.util.ArrayList;
 
 import com.google.gson.*;
+
 import strukture.*;
 
 
@@ -14,18 +15,20 @@ public class Pleaser
 	private OutputStream ostream;
 	private Socket clientSocket;
 	private ServerLog log;
-	private int requestType = -1;
 	private BufferedReader in = null;
 	private PrintWriter out = null;
+	private Request req = null;
+	private ClientWorker owner;
 	Gson gson;
 	
-	public Pleaser(Socket clientSocket, InputStream istream, OutputStream ostream)
+	public Pleaser(ClientWorker owner, Socket clientSocket, InputStream istream, OutputStream ostream)
 	{
+		this.owner = owner;
 		this.clientSocket = clientSocket;
 		this.log = ServerLog.getInstance();
 		this.istream = istream;
 		this.ostream = ostream;
-		this.gson = new GsonBuilder().serializeNulls().create();
+		this.gson = new GsonBuilder().create();
 		
 		in = new BufferedReader(new InputStreamReader(istream));
 		out = new PrintWriter(ostream);
@@ -42,78 +45,64 @@ public class Pleaser
 			if(line == null)
 				return;
 			
-			Request rq = gson.fromJson(line, Request.class);
+			log.write("Thread [" + owner.getId() + "] REQUEST= "+line);
 			
-			System.out.println(line);
+			req = gson.fromJson(line, Request.class);
 			
-			/*if((line = in.readLine()) != null)
-				requestType = Integer.parseInt(line);
-			else
-				return;*/
-			
-			/*switch(requestType)
+			switch(req.type)
 			{
 			case 0:
-				pleaseRequest0();
-				break;
-			case 1:
-				pleaseRequest1();
-				break;
-			case 2:
-				pleaseRequest2();
-				break;
-			case 3:
-				pleaseRequest3();
-				break;
-			case 4:
-				pleaseRequest4();
-				break;
-			case 5:
-				pleaseRequest5();
-				break;
-			case 6:
-				pleaseRequest6();
-				break;
-			case 7:
-				pleaseRequest7();
-				break;
-			case 8:
-				pleaseRequest8();
-				break;
-			case 9:
-				pleaseRequest9();
-				break;
-			case 10:
-				pleaseRequest10();
-				break;
-			case 11:
-				pleaseRequest11();
-				break;
-			case 12:
-				pleaseRequest12();
-				break;
-			case 13:
-				pleaseRequest13();
-				break;
-			case 14:
-				pleaseRequest14();
-				break;
-			case 15:
-				pleaseRequest15();
-				break;
-			case 16:
-				pleaseRequest16();
+				pleaseRequest0(req);
 				break;
 			default:
-				log.write("Nepoznat requestType = " + requestType);
+				log.write("Nepoznat request type = " + req.type);
 				break;
-			}*/
+			}
+
 			
 		} catch (IOException e)
 		{
 			log.write(e.getMessage());
 		}
 
+	}
+	
+	//klijent proverava da li ima najnoviju verziju baze
+	private void pleaseRequest0(Request req)
+	{
+		
+		if(req.dbVer < ServerConsts.grafDBVer)
+		{
+			File file = new File(ServerConsts.SQLITE_GRAF_DB_NAME);
+			
+			out.write((new Response(req.type, null, null, null, (int) file.length(), ServerConsts.grafDBVer)).toString() + "\n");
+			out.flush();
+			
+			byte[] fileData = new byte[(int) file.length()];
+		    DataInputStream dis;
+			try
+			{
+				dis = new DataInputStream(new FileInputStream(file));
+				dis.readFully(fileData);
+				ostream.write(fileData);
+				ostream.flush();
+				dis.close();
+			} catch (FileNotFoundException e)
+			{
+				log.write("Thread [" + owner.getId() + "] Exception caught when trying to open file " + ServerConsts.SQLITE_GRAF_DB_NAME);
+				log.write(e.getMessage());
+			} catch (IOException e)
+			{
+				log.write("Thread [" + owner.getId() + "] Exception caught when trying to read file " + ServerConsts.SQLITE_GRAF_DB_NAME);
+				log.write(e.getMessage());
+			}
+		    
+		} else
+		{
+			out.write((new Response(req.type, null, null, null, -1, null)).toString() + "\n");
+			out.flush();
+		}
+		
 	}
 	
 	/*private void pleaseRequest0()
