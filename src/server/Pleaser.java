@@ -21,7 +21,7 @@ public class Pleaser
 	private ClientWorker owner;
 	Gson gson;
 	
-	public Pleaser(ClientWorker owner, Socket clientSocket, InputStream istream, OutputStream ostream)
+	/*public Pleaser(ClientWorker owner, Socket clientSocket, InputStream istream, OutputStream ostream)
 	{
 		this.owner = owner;
 		this.clientSocket = clientSocket;
@@ -32,9 +32,62 @@ public class Pleaser
 		
 		in = new BufferedReader(new InputStreamReader(istream));
 		out = new PrintWriter(ostream);
+	}*/
+	
+	public Pleaser(ClientWorker owner)
+	{
+		this.owner = owner;
+		this.log = ServerLog.getInstance();
+		this.gson = new GsonBuilder().create();
 	}
 	
-	public void please()
+	public void please(Socket clientSocket)
+	{
+		String line = null;
+		
+		try
+		{
+			this.clientSocket = clientSocket;
+			this.istream = clientSocket.getInputStream();
+			this.ostream = clientSocket.getOutputStream();
+			this.in = new BufferedReader(new InputStreamReader(istream));
+			this.out = new PrintWriter(ostream);
+			
+			line = in.readLine();
+			
+			if(line == null)
+				return;
+			
+			log.write("Thread [" + owner.getId() + "] REQUEST= " + line);
+			
+			req = gson.fromJson(line, Request.class);
+			
+			switch(req.type)
+			{
+			case 0:
+				pleaseRequest0(req);
+				break;
+			default:
+				log.write("Thread["+ owner.getId() + "] " +"Nepoznat request type = " + req.type);
+				break;
+			}
+
+			
+		} catch (IOException e)
+		{
+			log.write("Thread["+ owner.getId() + "] " + "failed to please");;
+	    	log.write(e.getMessage());
+		} catch (Exception e)
+		{
+			log.write("Thread["+ owner.getId() + "] " + "Nepoznat request format = " + line);
+			log.write("Thread["+ owner.getId() + "] " + "failed to please");
+	    	log.write(e.getMessage());
+		}
+		
+
+	}
+	
+	/*public void please()
 	{
 		String line = null;
 		
@@ -65,7 +118,7 @@ public class Pleaser
 			log.write(e.getMessage());
 		}
 
-	}
+	}*/
 	
 	//klijent proverava da li ima najnoviju verziju baze
 	private void pleaseRequest0(Request req)
