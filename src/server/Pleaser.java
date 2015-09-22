@@ -134,7 +134,7 @@ public class Pleaser
 		{
 			File file = new File(ServerConsts.SQLITE_GRAF_DB_NAME);
 			
-			out.write((new Response(req.type, null, null, null, (int) file.length(), ServerConsts.grafDBVer)).toString() + "\n");
+			out.write((new Response(req.type, null, null, null, null, (int) file.length(), ServerConsts.grafDBVer)).toString() + "\n");
 			out.flush();
 			
 			byte[] fileData = new byte[(int) file.length()];
@@ -158,7 +158,7 @@ public class Pleaser
 		    
 		} else
 		{
-			out.write((new Response(req.type, null, null, null, -1, null)).toString() + "\n");
+			out.write((new Response(req.type, null, null, null, null, -1, null)).toString() + "\n");
 			out.flush();
 		}
 		
@@ -172,7 +172,7 @@ public class Pleaser
 			{
 				File file = new File(ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
 				
-				out.write((new Response(req.type, null, null, null, (int) file.length(), ServerConsts.rVoznjeDBVer)).toString() + "\n");
+				out.write((new Response(req.type, null, null, null, null, (int) file.length(), ServerConsts.rVoznjeDBVer)).toString() + "\n");
 				out.flush();
 				
 				byte[] fileData = new byte[(int) file.length()];
@@ -196,7 +196,7 @@ public class Pleaser
 			    
 			} else
 			{
-				out.write((new Response(req.type, null, null, null, -1, null)).toString() + "\n");
+				out.write((new Response(req.type, null, null, null, null, -1, null)).toString() + "\n");
 				out.flush();
 			}
 			
@@ -206,11 +206,11 @@ public class Pleaser
 	private void pleaseRequest3(Request req)
 	{
 		Linija linije[] = owner.getGradskeLinije().linije;
-		Graf g = owner.getGraf();
+		//Graf g = owner.getGraf();
 		//ArrayList<Cvor> stanice = g.getStanice();
 		ArrayList<Linija> targetLinije = new ArrayList<>();
 		
-		if(req.linija<1 && req.linija>=linije.length)
+		if(req.linija<1 || req.linija>=linije.length)
 			return;
 		
 		String brojLinije = linije[req.linija].broj.replace("*", "");
@@ -228,7 +228,11 @@ public class Pleaser
 		
 		//Integer minDistance = Integer.MAX_VALUE;
 		Double minDistance[] = new Double[targetLinije.size()];
-		Cvor minDistanceStanica[] = new Cvor[targetLinije.size()];
+		Cvor minDistanceStanice[] = new Cvor[targetLinije.size()];
+		
+		Integer linijeId[] = new Integer[targetLinije.size()];
+		Integer staniceId[] = new Integer[targetLinije.size()];
+		Integer korekcije[] = new Integer[targetLinije.size()];
 		
 		for(int i = 0; i < targetLinije.size(); ++i)
 		{
@@ -236,6 +240,8 @@ public class Pleaser
 			Double d;
 			
 			l = targetLinije.get(i);
+			
+			linijeId[i] = l.id;
 			
 			int predjeniPutBusa = 0;
 			int predjeniPutBusaDoNajblizeStanice = 0;
@@ -247,7 +253,7 @@ public class Pleaser
 			if((d = calcDistance(req.srcLat, req.srcLon, c.lat, c.lon)) < minDistance[i])
 			{
 				minDistance[i] = d;
-				minDistanceStanica[i] = c;
+				minDistanceStanice[i] = c;
 			}
 			
 			while((v = c.vratiVezu(l)) != null)
@@ -260,11 +266,18 @@ public class Pleaser
 				if((d = calcDistance(req.srcLat, req.srcLon, c.lat, c.lon)) < minDistance[i])
 				{
 					minDistance[i] = d;
-					minDistanceStanica[i] = c;
+					minDistanceStanice[i] = c;
 					predjeniPutBusaDoNajblizeStanice = predjeniPutBusa;
 				}
 			}
+			
+			staniceId[i] = minDistanceStanice[i].id;
+			
+			korekcije[i] = izracunajKorekciju(l, minDistanceStanice[i], predjeniPutBusaDoNajblizeStanice);
 		}
+		
+		out.write((new Response(req.type, staniceId, linijeId, korekcije, null, null, null)).toString() + "\n");
+		out.flush();
 		
 //		if(req.dbVer < ServerConsts.grafDBVer)
 //		{
@@ -298,6 +311,11 @@ public class Pleaser
 //			out.flush();
 //		}
 		
+	}
+	
+	private int izracunajKorekciju(Linija linija, Cvor stanica, int predjeniPut)
+	{
+		return (int) (predjeniPut/ServerConsts.brzinaAutobusa);
 	}
 	
 	
