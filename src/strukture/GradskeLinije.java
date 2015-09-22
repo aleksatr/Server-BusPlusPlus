@@ -12,7 +12,7 @@ import server.*;
 public class GradskeLinije
 {
 	//public ArrayList<Linija> linije = new ArrayList<>();
-	public Linija linije[];
+	public Linija linije[];		//id linija u bazi odgovara indeksu u ovom nizu
 	
 	public GradskeLinije(int size) 
 	{

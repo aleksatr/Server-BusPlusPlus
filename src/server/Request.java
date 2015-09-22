@@ -11,14 +11,14 @@ public class Request
 	public Double destLat = null;
 	public Double destLon = null;
 	public Integer linija = null;
-	public String smer = null;
+	//public String smer = null;
 	public String message = null;
 	public Double dbVer = null;
 	
 	public Request() {}
 
 	public Request(Integer type, Double srcLat, Double srcLon, Double destLat, 
-			Double destLon, Integer linija, String smer, String message)
+			Double destLon, Integer linija, /*String smer,*/ String message)
 	{
 		this.type = type;
 		this.srcLat = srcLat;
@@ -26,7 +26,7 @@ public class Request
 		this.destLat = destLat;
 		this.destLon = destLon;
 		this.linija = linija;
-		this.smer = smer;
+		//this.smer = smer;
 		this.message = message;
 	}
 

@@ -99,6 +99,16 @@ public class Graf
 	    }
 	}
 	
+	public GradskeLinije getGradskeLinije()
+	{
+		return this.gl;
+	}
+	
+	public ArrayList<Cvor> getStanice()
+	{
+		return this.cvorovi;
+	}
+	
 	public void pratiLiniju(int linijaId)
 	{
 		Linija l = gl.linije[linijaId];
@@ -120,5 +130,17 @@ public class Graf
 			if(c == pocetna)
 				break;
 		}
+	}
+	
+	public double calcDistance(Cvor c1, Cvor c2)
+	{
+	    double a, c;
+
+	    a = Math.sin((c2.lat - c1.lat)*Math.PI/360) * Math.sin((c2.lat - c1.lat)*Math.PI/360) +
+	    		Math.sin((c2.lon - c1.lon)*Math.PI/360) * Math.sin((c2.lon - c1.lon)*Math.PI/360) * Math.cos(c2.lat * Math.PI/180) * Math.cos(c1.lat * Math.PI/180);
+
+	    c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+	    return 6371000 * c;
 	}
 }

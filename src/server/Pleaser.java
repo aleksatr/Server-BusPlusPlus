@@ -58,7 +58,7 @@ public class Pleaser
 			if(line == null)
 				return;
 			
-			log.write("Thread [" + owner.getId() + "] REQUEST= " + line);
+			log.write("Thread [" + owner.getId() + "] client=" +clientSocket.getInetAddress().toString()+ " REQUEST= " + line);
 			
 			req = gson.fromJson(line, Request.class);
 			
@@ -66,6 +66,12 @@ public class Pleaser
 			{
 			case 0:
 				pleaseRequest0(req);
+				break;
+			case 1:
+				pleaseRequest1(req);
+				break;	
+			case 3:
+				pleaseRequest3(req);
 				break;
 			default:
 				log.write("Thread["+ owner.getId() + "] " +"Nepoznat request type = " + req.type);
@@ -120,7 +126,7 @@ public class Pleaser
 
 	}*/
 	
-	//klijent proverava da li ima najnoviju verziju baze
+	//klijent proverava da li ima najnoviju verziju baze bpp.db
 	private void pleaseRequest0(Request req)
 	{
 		
@@ -157,6 +163,143 @@ public class Pleaser
 		}
 		
 	}
+	
+	//klijent proverava da li ima najnoviju verziju baze red_voznje.db
+		private void pleaseRequest1(Request req)
+		{
+			
+			if(req.dbVer < ServerConsts.rVoznjeDBVer)
+			{
+				File file = new File(ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
+				
+				out.write((new Response(req.type, null, null, null, (int) file.length(), ServerConsts.rVoznjeDBVer)).toString() + "\n");
+				out.flush();
+				
+				byte[] fileData = new byte[(int) file.length()];
+			    DataInputStream dis;
+				try
+				{
+					dis = new DataInputStream(new FileInputStream(file));
+					dis.readFully(fileData);
+					ostream.write(fileData);
+					ostream.flush();
+					dis.close();
+				} catch (FileNotFoundException e)
+				{
+					log.write("Thread [" + owner.getId() + "] Exception caught when trying to open file " + ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
+					log.write(e.getMessage());
+				} catch (IOException e)
+				{
+					log.write("Thread [" + owner.getId() + "] Exception caught when trying to read file " + ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
+					log.write(e.getMessage());
+				}
+			    
+			} else
+			{
+				out.write((new Response(req.type, null, null, null, -1, null)).toString() + "\n");
+				out.flush();
+			}
+			
+		}
+	
+	//klasican red voznje
+	private void pleaseRequest3(Request req)
+	{
+		Linija linije[] = owner.getGradskeLinije().linije;
+		Graf g = owner.getGraf();
+		//ArrayList<Cvor> stanice = g.getStanice();
+		ArrayList<Linija> targetLinije = new ArrayList<>();
+		
+		if(req.linija<1 && req.linija>=linije.length)
+			return;
+		
+		String brojLinije = linije[req.linija].broj.replace("*", "");
+		String smer = linije[req.linija].smer;
+		
+		Linija l = null;
+		for(int i = 0; i < linije.length; ++i)
+		{
+			if(linije[i] == null)
+				continue;
+			
+			if(brojLinije.equals(linije[i].broj.replace("*", "")) && smer.equalsIgnoreCase(linije[i].smer))
+				targetLinije.add(linije[i]);
+		}
+		
+		//Integer minDistance = Integer.MAX_VALUE;
+		Double minDistance[] = new Double[targetLinije.size()];
+		Cvor minDistanceStanica[] = new Cvor[targetLinije.size()];
+		
+		for(int i = 0; i < targetLinije.size(); ++i)
+		{
+			minDistance[i] = Double.MAX_VALUE;
+			Double d;
+			
+			l = targetLinije.get(i);
+			
+			int predjeniPutBusa = 0;
+			int predjeniPutBusaDoNajblizeStanice = 0;
+			
+			Cvor c = l.pocetnaStanica;
+			Cvor pocetna = c;
+			Veza v = null;
+			
+			if((d = calcDistance(req.srcLat, req.srcLon, c.lat, c.lon)) < minDistance[i])
+			{
+				minDistance[i] = d;
+				minDistanceStanica[i] = c;
+			}
+			
+			while((v = c.vratiVezu(l)) != null)
+			{
+				c = v.destination;
+				predjeniPutBusa += v.weight;
+				if(c == pocetna)
+					break;
+				
+				if((d = calcDistance(req.srcLat, req.srcLon, c.lat, c.lon)) < minDistance[i])
+				{
+					minDistance[i] = d;
+					minDistanceStanica[i] = c;
+					predjeniPutBusaDoNajblizeStanice = predjeniPutBusa;
+				}
+			}
+		}
+		
+//		if(req.dbVer < ServerConsts.grafDBVer)
+//		{
+//			File file = new File(ServerConsts.SQLITE_GRAF_DB_NAME);
+//			
+//			out.write((new Response(req.type, null, null, null, (int) file.length(), ServerConsts.grafDBVer)).toString() + "\n");
+//			out.flush();
+//			
+//			byte[] fileData = new byte[(int) file.length()];
+//		    DataInputStream dis;
+//			try
+//			{
+//				dis = new DataInputStream(new FileInputStream(file));
+//				dis.readFully(fileData);
+//				ostream.write(fileData);
+//				ostream.flush();
+//				dis.close();
+//			} catch (FileNotFoundException e)
+//			{
+//				log.write("Thread [" + owner.getId() + "] Exception caught when trying to open file " + ServerConsts.SQLITE_GRAF_DB_NAME);
+//				log.write(e.getMessage());
+//			} catch (IOException e)
+//			{
+//				log.write("Thread [" + owner.getId() + "] Exception caught when trying to read file " + ServerConsts.SQLITE_GRAF_DB_NAME);
+//				log.write(e.getMessage());
+//			}
+//		    
+//		} else
+//		{
+//			out.write((new Response(req.type, null, null, null, -1, null)).toString() + "\n");
+//			out.flush();
+//		}
+		
+	}
+	
 	
 	/*private void pleaseRequest0()
 	{

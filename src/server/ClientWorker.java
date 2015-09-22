@@ -89,6 +89,16 @@ public class ClientWorker implements Runnable
 		return id;
 	}
 	
+	public Graf getGraf()
+	{
+		return graf;
+	}
+	
+	public GradskeLinije getGradskeLinije()
+	{
+		return graf.getGradskeLinije();
+	}
+	
 }
 
 //logs = gson.fromJson(br, new TypeToken<List<JsonLog>>(){}.getType());
