@@ -9,7 +9,7 @@ import com.google.gson.*;
 import strukture.*;
 
 
-public class Pleaser
+public class RequestHandler
 {
 	private InputStream istream;
 	private OutputStream ostream;
@@ -34,14 +34,14 @@ public class Pleaser
 		out = new PrintWriter(ostream);
 	}*/
 	
-	public Pleaser(ClientWorker owner)
+	public RequestHandler(ClientWorker owner)
 	{
 		this.owner = owner;
 		this.log = ServerLog.getInstance();
 		this.gson = new GsonBuilder().create();
 	}
 	
-	public void please(Socket clientSocket)
+	public void handle(Socket clientSocket)
 	{
 		String line = null;
 		
@@ -65,13 +65,16 @@ public class Pleaser
 			switch(req.type)
 			{
 			case 0:
-				pleaseRequest0(req);
+				handleRequest0(req);
 				break;
 			case 1:
-				pleaseRequest1(req);
+				handleRequest1(req);
 				break;	
 			case 3:
-				pleaseRequest3(req);
+				handleRequest3(req);
+				break;
+			case 4:
+				handleRequest4(req);
 				break;
 			default:
 				log.write("Thread["+ owner.getId() + "] " +"Nepoznat request type = " + req.type);
@@ -93,41 +96,8 @@ public class Pleaser
 
 	}
 	
-	/*public void please()
-	{
-		String line = null;
-		
-		try
-		{
-			line = in.readLine();
-			
-			if(line == null)
-				return;
-			
-			log.write("Thread [" + owner.getId() + "] REQUEST= "+line);
-			
-			req = gson.fromJson(line, Request.class);
-			
-			switch(req.type)
-			{
-			case 0:
-				pleaseRequest0(req);
-				break;
-			default:
-				log.write("Nepoznat request type = " + req.type);
-				break;
-			}
-
-			
-		} catch (IOException e)
-		{
-			log.write(e.getMessage());
-		}
-
-	}*/
-	
 	//klijent proverava da li ima najnoviju verziju baze bpp.db
-	private void pleaseRequest0(Request req)
+	private void handleRequest0(Request req)
 	{
 		
 		if(req.dbVer < ServerConsts.grafDBVer)
@@ -165,45 +135,45 @@ public class Pleaser
 	}
 	
 	//klijent proverava da li ima najnoviju verziju baze red_voznje.db
-		private void pleaseRequest1(Request req)
+	private void handleRequest1(Request req)
+	{
+			
+		if(req.dbVer < ServerConsts.rVoznjeDBVer)
 		{
-			
-			if(req.dbVer < ServerConsts.rVoznjeDBVer)
-			{
-				File file = new File(ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
+			File file = new File(ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
 				
-				out.write((new Response(req.type, null, null, null, null, (int) file.length(), ServerConsts.rVoznjeDBVer)).toString() + "\n");
-				out.flush();
+			out.write((new Response(req.type, null, null, null, null, (int) file.length(), ServerConsts.rVoznjeDBVer)).toString() + "\n");
+			out.flush();
 				
-				byte[] fileData = new byte[(int) file.length()];
-			    DataInputStream dis;
-				try
-				{
-					dis = new DataInputStream(new FileInputStream(file));
-					dis.readFully(fileData);
-					ostream.write(fileData);
-					ostream.flush();
-					dis.close();
-				} catch (FileNotFoundException e)
-				{
-					log.write("Thread [" + owner.getId() + "] Exception caught when trying to open file " + ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
-					log.write(e.getMessage());
-				} catch (IOException e)
-				{
-					log.write("Thread [" + owner.getId() + "] Exception caught when trying to read file " + ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
-					log.write(e.getMessage());
-				}
-			    
-			} else
+			byte[] fileData = new byte[(int) file.length()];
+			DataInputStream dis;
+			try
 			{
-				out.write((new Response(req.type, null, null, null, null, -1, null)).toString() + "\n");
-				out.flush();
+				dis = new DataInputStream(new FileInputStream(file));
+				dis.readFully(fileData);
+				ostream.write(fileData);
+				ostream.flush();
+				dis.close();
+			} catch (FileNotFoundException e)
+			{
+				log.write("Thread [" + owner.getId() + "] Exception caught when trying to open file " + ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
+				log.write(e.getMessage());
+			} catch (IOException e)
+			{
+				log.write("Thread [" + owner.getId() + "] Exception caught when trying to read file " + ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
+				log.write(e.getMessage());
 			}
-			
+			    
+		} else
+		{
+			out.write((new Response(req.type, null, null, null, null, -1, null)).toString() + "\n");
+			out.flush();
 		}
+			
+	}
 	
 	//klasican red voznje
-	private void pleaseRequest3(Request req)
+	private void handleRequest3(Request req)
 	{
 		Linija linije[] = owner.getGradskeLinije().linije;
 		//Graf g = owner.getGraf();
@@ -213,8 +183,8 @@ public class Pleaser
 		if(req.linija<1 || req.linija>=linije.length)
 			return;
 		
-		String brojLinije = linije[req.linija].broj.replace("*", "");
-		String smer = linije[req.linija].smer;
+			String brojLinije = linije[req.linija].broj.replace("*", "");
+			String smer = linije[req.linija].smer;
 		
 		Linija l = null;
 		for(int i = 0; i < linije.length; ++i)
@@ -276,47 +246,164 @@ public class Pleaser
 			korekcije[i] = izracunajKorekciju(l, minDistanceStanice[i], predjeniPutBusaDoNajblizeStanice);
 		}
 		
-		out.write((new Response(req.type, staniceId, linijeId, korekcije, null, null, null)).toString() + "\n");
+		String responseStr = (new Response(req.type, staniceId, linijeId, korekcije, null, null, null)).toString();
+		log.write("Thread [" + owner.getId() + "] client=" +clientSocket.getInetAddress().toString()+ " RESPONSE= " + responseStr);
+		
+		out.write(responseStr + "\n");
 		out.flush();
-		
-//		if(req.dbVer < ServerConsts.grafDBVer)
-//		{
-//			File file = new File(ServerConsts.SQLITE_GRAF_DB_NAME);
-//			
-//			out.write((new Response(req.type, null, null, null, (int) file.length(), ServerConsts.grafDBVer)).toString() + "\n");
-//			out.flush();
-//			
-//			byte[] fileData = new byte[(int) file.length()];
-//		    DataInputStream dis;
-//			try
-//			{
-//				dis = new DataInputStream(new FileInputStream(file));
-//				dis.readFully(fileData);
-//				ostream.write(fileData);
-//				ostream.flush();
-//				dis.close();
-//			} catch (FileNotFoundException e)
-//			{
-//				log.write("Thread [" + owner.getId() + "] Exception caught when trying to open file " + ServerConsts.SQLITE_GRAF_DB_NAME);
-//				log.write(e.getMessage());
-//			} catch (IOException e)
-//			{
-//				log.write("Thread [" + owner.getId() + "] Exception caught when trying to read file " + ServerConsts.SQLITE_GRAF_DB_NAME);
-//				log.write(e.getMessage());
-//			}
-//		    
-//		} else
-//		{
-//			out.write((new Response(req.type, null, null, null, -1, null)).toString() + "\n");
-//			out.flush();
-//		}
-		
+
 	}
 	
+	//ekonomicni (napredni) rezim
+	private void handleRequest4(Request req)
+	{
+		Graf g = owner.getGraf();
+		Cvor stanice[] = g.getStanice().toArray(new Cvor[g.getStanice().size()]);
+		Linija linije[] = g.getGradskeLinije().linije;
+		double pesacenje[] = new double[stanice.length];
+		Double minimalnoPesacenje = calcDistance(req.srcLat, req.srcLon, req.destLat, req.destLon);
+		Integer responseStanice[] = new Integer[2]; //responseStanice[0] najbliza source stanica, responseStanice[1] najbliza destination stanica
+		ArrayList<Integer> responseLinije = null;
+		
+		for(int i = 0; i < stanice.length; ++i)
+		{
+			pesacenje[i] = calcDistance(stanice[i], req.srcLat, req.srcLon);
+		}
+		
+		for(int i = 1; i < stanice.length; ++i)
+		{
+	        double key = pesacenje[i];
+	        Cvor pomC = stanice[i];
+	        int j = i-1;
+	        while((j >= 0) && (pesacenje[j] > key))
+	        {
+	            pesacenje[j+1] = pesacenje[j];
+	            stanice[j+1] = stanice[j];
+	            --j;
+	        }
+	        pesacenje[j+1] = key;
+	        stanice[j+1] = pomC;
+	    }
+		
+		for(int i = 0; i<stanice.length && minimalnoPesacenje>pesacenje[i]; ++i)
+		{
+			Cvor c = stanice[i];
+			System.out.println("STANICA = " + c);
+			
+			for(int j = 0; j < c.veze.size(); ++j)
+			{
+				c = stanice[i];
+				Veza v = c.veze.get(j);
+				Linija l = v.linija;
+				Double d;
+				Cvor destStanica = c;
+				Double destPesacenje = calcDistance(c, req.destLat, req.destLon);
+				
+				System.out.println("LINIJA = " + l);
+				
+				while((v = c.vratiVezu(l)) != null)
+				{
+					c = v.destination;
+					
+					if(c == l.pocetnaStanica)
+						break;
+					
+					if(destPesacenje > (d = calcDistance(c, req.destLat, req.destLon)))
+					{
+						destStanica = c;
+						destPesacenje = d;
+					}
+				}
+				
+				if(destPesacenje + pesacenje[i] < minimalnoPesacenje)
+				{
+					minimalnoPesacenje = destPesacenje + pesacenje[i];
+					responseStanice[0] = stanice[i].id;
+					responseStanice[1] = destStanica.id;
+					responseLinije = new ArrayList<>();
+					responseLinije.add(l.id);
+				} else if(destPesacenje + pesacenje[i] == minimalnoPesacenje)
+				{
+					responseLinije.add(l.id);
+				}
+				
+			}
+		}
+		
+		Integer responseKorekcije[] = new Integer[responseLinije.size()];
+		Integer responseLinijeArray[] = (Integer[]) responseLinije.toArray(new Integer[responseLinije.size()]);
+		for(int i = 0; i < responseKorekcije.length; ++i)
+		{
+			responseKorekcije[i] = izracunajKorekciju(linije[responseLinijeArray[i]], stanice[responseStanice[0]]);
+		}
+		
+		String responseStr = (new Response(req.type, responseStanice, responseLinijeArray, responseKorekcije, null, null, null)).toString();
+		
+		log.write("Thread [" + owner.getId() + "] client=" +clientSocket.getInetAddress().toString()+ " RESPONSE= " + responseStr);
+		
+		out.write(responseStr + "\n");
+		out.flush();
+	}
+	
+	//predjeni put do stanice stanica, linijom linija
 	private int izracunajKorekciju(Linija linija, Cvor stanica, int predjeniPut)
 	{
 		return (int) (predjeniPut/ServerConsts.brzinaAutobusa);
 	}
+	
+	
+	private int izracunajKorekciju(Linija linija, Cvor targetStanica)
+	{
+		int predjeniPut = 0;
+		
+		Cvor pocetnaStanica = linija.pocetnaStanica;
+		Cvor tempStanica = pocetnaStanica;
+		Veza v = null;
+		
+		while((v = tempStanica.vratiVezu(linija)) != null)
+		{
+			predjeniPut += v.weight;
+			
+			if((v.destination == pocetnaStanica) || (v.destination == targetStanica))
+				break;
+			
+			tempStanica = v.destination;
+		}
+		
+		return izracunajKorekciju(linija, targetStanica, predjeniPut);
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	
 	/*private void pleaseRequest0()
@@ -917,6 +1004,18 @@ public class Pleaser
 			log.write(e.getMessage());
 		}
 	}*/
+	
+	public static double calcDistance(Cvor stanica, double lat2, double long2)
+	{
+	    double a, c;
+
+	    a = Math.sin((lat2 - stanica.lat)*Math.PI/360) * Math.sin((lat2 - stanica.lat)*Math.PI/360) +
+	    	Math.sin((long2 - stanica.lon)*Math.PI/360) * Math.sin((long2 - stanica.lon)*Math.PI/360) * Math.cos(lat2 * Math.PI/180) * Math.cos(stanica.lat * Math.PI/180);
+
+	    c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+	    return 6371000 * c;
+	}
 	
 	public static double calcDistance(double lat1, double long1, double lat2, double long2)
 	{

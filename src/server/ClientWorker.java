@@ -15,7 +15,7 @@ public class ClientWorker implements Runnable
 	private Graf graf;
 	private Socket clientSocket = null;
 	private ServerLog log;
-	private Pleaser pleaser = null;
+	private RequestHandler pleaser = null;
 	private int id;
 	private LinkedBlockingQueue<Socket> requestsQueue;
 	
@@ -58,7 +58,7 @@ public class ClientWorker implements Runnable
 			return;
 		}
 		
-		pleaser = new Pleaser(this);
+		pleaser = new RequestHandler(this);
 		
 		
 		while(true)
@@ -71,7 +71,7 @@ public class ClientWorker implements Runnable
 				log.write("Thread["+ id + "] " + e.getMessage());
 			}
 
-			pleaser.please(clientSocket);
+			pleaser.handle(clientSocket);
 		   
 		    try
 			{
