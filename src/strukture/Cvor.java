@@ -7,11 +7,16 @@ import com.google.gson.GsonBuilder;
 
 public class Cvor
 {
-	public Integer id = null;
-	public String naziv = null;
-	public Double lat = null;
-	public Double lon = null;
-	public transient ArrayList<Veza> veze;
+	public Integer id = null;								//jedinstveni id stanice
+	public String naziv = null;								//naziv stanice
+	public Double lat = null;								//
+	public Double lon = null;								//koordinate stanice			
+	public transient ArrayList<Veza> veze;					//veze ka drugim stanicama
+	
+	//pomocne promenljive za algoritme obilaska grafa
+	public int status = StruktureConsts.CVOR_NEOBRADJEN; 	//da li je cvor obradjen prilikom obilaska grafa
+	public Cvor prethodnaStanica = null;					//sa koje stanice se doslo na ovu stanicu
+	public Linija linijom = null;							//kojom linijom se doslo sa prethodne stanice na ovu
 	
 	public Cvor() {}
 	
@@ -61,5 +66,12 @@ public class Cvor
 		
 		return gson.toJson(this);
 		//return " " + id +" " +  naziv +" " +  lat +" " +  lon;
+	}
+	
+	public void resetStatus()
+	{
+		this.status = StruktureConsts.CVOR_NEOBRADJEN;
+		this.prethodnaStanica = null;
+		this.linijom = null;
 	}
 }

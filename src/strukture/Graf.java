@@ -132,6 +132,12 @@ public class Graf
 		}
 	}
 	
+	public void resetujCvorove()
+	{
+		for(int i = 0; i < cvorovi.size(); ++i)
+			cvorovi.get(i).resetStatus();
+	}
+	
 	public double calcDistance(Cvor c1, Cvor c2)
 	{
 	    double a, c;
