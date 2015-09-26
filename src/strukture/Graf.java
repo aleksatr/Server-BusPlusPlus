@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 import server.*;
 
@@ -107,6 +108,28 @@ public class Graf
 	public ArrayList<Cvor> getStanice()
 	{
 		return this.cvorovi;
+	}
+	
+	//obilazak po sirini
+	//ostavlja izmenjenu strukturu grafa, vraca true ako nadje put
+	public boolean BFS(Cvor start, Cvor end)
+	{
+		LinkedList<Cvor> linkedQueue = new LinkedList<>();
+		boolean nasoPut = false;
+		Cvor radniCvor = null;
+		
+		this.resetujCvorove();
+		
+		linkedQueue.add(start);
+		start.status = StruktureConsts.CVOR_SMESTEN;
+			
+		while(!linkedQueue.isEmpty())
+		{
+			radniCvor = linkedQueue.poll();
+			radniCvor.status = StruktureConsts.CVOR_OBRADJEN; 
+		}
+			
+		return nasoPut;
 	}
 	
 	public void pratiLiniju(int linijaId)

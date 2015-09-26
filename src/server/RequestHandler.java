@@ -62,7 +62,7 @@ public class RequestHandler
 				handleRequest3(req);
 				break;
 			case 4:
-				handleRequest4(req);
+				handleRequest4b(req);
 				break;
 			case 5:
 				handleRequest5(req);
@@ -255,7 +255,7 @@ public class RequestHandler
 		double pesacenje[] = new double[stanice.length];
 		Double minimalnoPesacenje = calcDistance(req.srcLat, req.srcLon, req.destLat, req.destLon);
 		Integer responseStanice[] = new Integer[2]; //responseStanice[0] najbliza source stanica, responseStanice[1] najbliza destination stanica
-		ArrayList<Integer> responseLinije = null;
+		ArrayList<Integer> responseLinije = new ArrayList<>();
 		
 		for(int i = 0; i < stanice.length; ++i)
 		{
@@ -320,20 +320,132 @@ public class RequestHandler
 			}
 		}
 		
-		Integer responseKorekcije[] = new Integer[responseLinije.size()];
-		Integer responseLinijeArray[] = (Integer[]) responseLinije.toArray(new Integer[responseLinije.size()]);
-		
-		for(int i = 0; i < responseKorekcije.length; ++i)
+		if(responseLinije.size() > 0)
 		{
-			responseKorekcije[i] = izracunajKorekciju(linije[responseLinijeArray[i]], sourceCvor);
+			Integer responseKorekcije[] = new Integer[responseLinije.size()];
+			Integer responseLinijeArray[] = (Integer[]) responseLinije.toArray(new Integer[responseLinije.size()]);
+			
+			for(int i = 0; i < responseKorekcije.length; ++i)
+			{
+				responseKorekcije[i] = izracunajKorekciju(linije[responseLinijeArray[i]], sourceCvor);
+			}
+			
+			String responseStr = (new Response(req.type, responseStanice, responseLinijeArray, responseKorekcije, null, null, null)).toString();
+			
+			log.write("Thread [" + owner.getId() + "] client=" +clientSocket.getInetAddress().toString()+ " RESPONSE= " + responseStr);
+			out.write(responseStr + "\n");
+		}
+		else
+		{
+			String responseStr = (new Response(req.type, null, null, null, null, null, null)).toString();
+			
+			log.write("Thread [" + owner.getId() + "] client=" +clientSocket.getInetAddress().toString()+ " RESPONSE= " + responseStr + " (vise se isplati pesacenje!?)");
+			out.write(responseStr + "\n");
 		}
 		
-		String responseStr = (new Response(req.type, responseStanice, responseLinijeArray, responseKorekcije, null, null, null)).toString();
-		
-		log.write("Thread [" + owner.getId() + "] client=" +clientSocket.getInetAddress().toString()+ " RESPONSE= " + responseStr);
-		
-		out.write(responseStr + "\n");
 		out.flush();
+	}
+	
+	//ekonomicni (napredni) rezim B (drugi nacin, sa konstantnim vremenom izvrsenja)
+	private void handleRequest4b(Request req)
+	{
+		Linija linije[] = owner.getGradskeLinije().linije;
+		Cvor responseStanice[] = new Cvor[2]; //stanice za response prvo source stanica, drugo destination stanica
+		ArrayList<Linija> responseLinije = new ArrayList<>();
+		ArrayList<Integer> predjeniPutevi = new ArrayList<>();
+		double minimalnoPesacenje = calcDistance(req.srcLat, req.srcLon, req.destLat, req.destLon);
+		double gornjaGranica = minimalnoPesacenje;
+		for(int i = 0; i < linije.length; ++i)
+		{
+			if(linije[i] != null)
+			{
+				Cvor stanica = linije[i].pocetnaStanica;
+				Cvor start = null, stop = null;
+				Veza v = null;
+				int predjeniPut = 0, startPredjeniPut = 0;
+				double startnaUdaljenost = gornjaGranica;
+				double zavrsnaUdaljenost = gornjaGranica;
+				double dS, dZ;
+				
+				while((v = stanica.vratiVezu(linije[i])) != null)
+				{
+					predjeniPut += v.weight;
+					stanica = v.destination;
+					
+					dS = calcDistance(stanica, req.srcLat, req.srcLon);
+					dZ = calcDistance(stanica, req.destLat, req.destLon);
+					//moze da se optimizuje tako sto se jednom izracunaju i zapamte u cvorovima njihove udaljenosti do cilja i starta
+					
+					if(dS < startnaUdaljenost)
+					{
+						startnaUdaljenost = dS;
+						zavrsnaUdaljenost = gornjaGranica;
+						start = stanica;
+						startPredjeniPut = predjeniPut;
+					}
+					
+					if(dZ < zavrsnaUdaljenost)
+					{
+						zavrsnaUdaljenost = dZ;
+						stop = stanica;
+					}
+					
+					if(stanica == linije[i].pocetnaStanica)
+						break;
+				}
+				
+				if(startnaUdaljenost + zavrsnaUdaljenost < minimalnoPesacenje)
+				{
+					minimalnoPesacenje = startnaUdaljenost + zavrsnaUdaljenost;
+					responseStanice[0] = start;
+					responseStanice[1] = stop;
+					responseLinije = new ArrayList<>();
+					predjeniPutevi = new ArrayList<>();
+					responseLinije.add(linije[i]);
+					predjeniPutevi.add(startPredjeniPut);
+				} else if(startnaUdaljenost + zavrsnaUdaljenost == minimalnoPesacenje)
+				{
+					if(responseStanice[0] == start && responseStanice[1] == stop)
+					{
+						responseLinije.add(linije[i]);
+						predjeniPutevi.add(startPredjeniPut);
+					}
+				}
+				
+			}
+		}
+		
+		if(responseLinije.size() > 0)
+		{
+			Integer responseKorekcije[] = new Integer[responseLinije.size()];
+			Integer responseLinijeArray[] = new Integer[responseLinije.size()];
+			Integer responseStaniceArray[] = new Integer[responseStanice.length];
+			
+			for(int i = 0; i < responseKorekcije.length; ++i)
+			{
+				Linija l = responseLinije.get(i);
+				responseKorekcije[i] = izracunajKorekciju(l, responseStanice[0], predjeniPutevi.get(i));
+				responseLinijeArray[i] = l.id;
+			}
+			
+			responseStaniceArray[0] = responseStanice[0].id;
+			responseStaniceArray[1] = responseStanice[1].id;
+			
+			String responseStr = (new Response(req.type, responseStaniceArray, responseLinijeArray, responseKorekcije, null, null, null)).toString();
+			
+			log.write("Thread [" + owner.getId() + "] client=" +clientSocket.getInetAddress().toString()+ " RESPONSE= " + responseStr);
+			out.write(responseStr + "\n");
+		}
+		else
+		{
+			String responseStr = (new Response(req.type, null, null, null, null, null, null)).toString();
+			
+			log.write("Thread [" + owner.getId() + "] client=" +clientSocket.getInetAddress().toString()+ " RESPONSE= " + responseStr + " (vise se isplati pesacenje!?)");
+			out.write(responseStr + "\n");
+		}
+		
+		out.flush();
+		
 	}
 
 	//rezim minimalnog pesacenja (napredni)
@@ -348,8 +460,6 @@ public class RequestHandler
 		
 		ArrayList<Cvor> startStanice = new ArrayList<>();
 		ArrayList<Cvor> endStanice = new ArrayList<>();
-		
-		LinkedList<Cvor> linkedQueue = new LinkedList<>();
 		
 		for(int i = 0; i < stanice.length; ++i)
 		{
@@ -439,23 +549,11 @@ public class RequestHandler
 		/////////////////////////////////////////////////////////////////////////////////////
 		
 		boolean nasoPut = false;
-		int s = 0, e = 0;
-		while(!nasoPut)
-		{
-			g.resetujCvorove();
-			//pomBFS(start, end);
-		}
 		
-	}
-	
-	//pomocna funkcija za rezim minimalnog pesacenja (napredni), obilazak po sirini
-	//ostavlja izmenjenu strukturu grafa, vraca true ako je nadje put
-	private boolean pomBFS(Cvor start, Cvor end)
-	{
-		boolean nasoPut = false;
+		for(int s = 0; s<StruktureConsts.MIN_PESACENJE_START_NUM && !nasoPut; ++s)
+			for(int e = 0; e<StruktureConsts.MIN_PESACENJE_END_NUM && !nasoPut; ++s)
+				nasoPut = g.BFS(startStanice.get(s), endStanice.get(e));
 		
-		
-		return nasoPut;
 	}
 	
 	
@@ -471,6 +569,9 @@ public class RequestHandler
 		
 		if(linija == null || targetStanica==null)
 			return Integer.MAX_VALUE;
+		
+		if(linija.pocetnaStanica == targetStanica)
+			return izracunajKorekciju(linija, targetStanica, 0);
 		
 		Cvor pocetnaStanica = linija.pocetnaStanica;
 		Cvor tempStanica = pocetnaStanica;
