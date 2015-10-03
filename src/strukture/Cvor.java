@@ -14,9 +14,11 @@ public class Cvor
 	public transient ArrayList<Veza> veze;					//veze ka drugim stanicama
 	
 	//pomocne promenljive za algoritme obilaska grafa
-	public int status = StruktureConsts.CVOR_NEOBRADJEN; 	//da li je cvor obradjen prilikom obilaska grafa
-	public Cvor prethodnaStanica = null;					//sa koje stanice se doslo na ovu stanicu
-	public Linija linijom = null;							//kojom linijom se doslo sa prethodne stanice na ovu
+	public transient int status = StruktureConsts.CVOR_NEOBRADJEN; 	//da li je cvor obradjen prilikom obilaska grafa
+	public transient Cvor prethodnaStanica = null;					//sa koje stanice se doslo na ovu stanicu 				[cvor roditelj]
+	public transient Linija linijom = null;							//kojom linijom se doslo sa prethodne stanice na ovu	[akcija primenjena na roditelju da bi se generisalo ovo stanje]
+	public transient double cenaPutanje = 0.0;						//cena putanje od pocetnog cvora do ovog cvora, putanjom koja je oznacenja pokazivacima na roditelje (prethodnaStanica), u sekundama
+	public transient double heuristika = Double.MAX_VALUE;
 	
 	public Cvor() {}
 	

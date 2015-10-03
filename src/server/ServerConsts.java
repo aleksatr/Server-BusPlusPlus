@@ -10,6 +10,7 @@ public final class ServerConsts
 	public static final int WORKER_THREAD_POOL_SIZE = 10;
 	public static final String DB_VER_FILE = "db.ver";
 	public static final Double brzinaAutobusa = 5.4;								//brzina autobusa u m/s
+	public static final Double brzinaPesaka = 0.7659;								//brzina pesaka u m/s
 	public static double grafDBVer = 0;
 	public static double rVoznjeDBVer = 0;
 	

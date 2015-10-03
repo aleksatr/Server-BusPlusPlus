@@ -3,7 +3,10 @@ package server;
 import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
+import java.time.DayOfWeek;
+import java.time.LocalDateTime;
 
 import com.google.gson.*;
 
@@ -20,6 +23,9 @@ public class RequestHandler
 	private PrintWriter out = null;
 	private Request req = null;
 	private ClientWorker owner;
+	
+	private double matricaUdaljenosti[][] = null; 			//matricaUdaljenosti[startCvor.id][finishCvor.id] = udaljenost start-finish
+	
 	Gson gson;
 	
 	public RequestHandler(ClientWorker owner)
@@ -27,6 +33,28 @@ public class RequestHandler
 		this.owner = owner;
 		this.log = ServerLog.getInstance();
 		this.gson = new GsonBuilder().create();
+		
+		//inicijalizacija matrice udaljenosti
+		//pomocniNizCvorova = owner.getGraf().getStanice().toArray(new Cvor[owner.getGraf().getStanice().size()]);
+		
+		ArrayList<Cvor> stanice = owner.getGraf().getStanice();
+		int maxId = -1;
+		for(int i = 0; i < stanice.size(); ++i)
+		{
+			Cvor c = stanice.get(i);
+			if(c.id > maxId)
+				maxId = c.id;
+		}
+		
+		matricaUdaljenosti = new double[maxId + 3][maxId + 3];
+		
+		for(int i = 0; i < stanice.size(); ++i)
+			for(int j = 0; j < stanice.size(); ++j)
+			{
+				Cvor start = stanice.get(i);
+				Cvor finish = stanice.get(j);
+				matricaUdaljenosti[start.id][finish.id] = owner.getGraf().calcDistance(start, finish);
+			}
 	}
 	
 	public void handle(Socket clientSocket)
@@ -50,6 +78,50 @@ public class RequestHandler
 			
 			req = gson.fromJson(line, Request.class);
 			
+			////////////////////////////////////
+			/*Linija l = owner.getGradskeLinije().linije[10];
+			Cvor c = null;
+			
+			//odstampaj red voznje
+			for(int i = 0; i < 25; ++i)
+			{
+				System.out.print(i + ": ");
+				for(int j = 0; j < 60; ++j)
+					if(l.matRadni[i][j] != -1)
+						System.out.print(l.matRadni[i][j] + ", ");
+					else
+						break;
+				System.out.println();
+			}
+			for(int i = 0; i < 25; ++i)
+			{
+				System.out.print(i + ": ");
+				for(int j = 0; j < 60; ++j)
+					if(l.matSubota[i][j] != -1)
+						System.out.print(l.matSubota[i][j] + ", ");
+					else
+						break;
+				System.out.println();
+			}
+			for(int i = 0; i < 25; ++i)
+			{
+				System.out.print(i + ": ");
+				for(int j = 0; j < 60; ++j)
+					if(l.matNedelja[i][j] != -1)
+						System.out.print(l.matNedelja[i][j] + ", ");
+					else
+						break;
+				System.out.println();
+			}
+			
+			for(int i = 0; i < owner.getGraf().getStanice().size(); ++i)
+			{
+				c = owner.getGraf().getStanice().get(i);
+				if(c.id == 207)
+					break;
+			}
+			System.out.println("kasnjenje = " + izracunajKasnjenjeLinije(l, c, ServerConsts.brzinaAutobusa));*/
+			///////////////////////////////////
 			switch(req.type)
 			{
 			case 0:
@@ -62,10 +134,13 @@ public class RequestHandler
 				handleRequest3(req);
 				break;
 			case 4:
-				handleRequest4b(req);
+				handleRequest4(req);
 				break;
 			case 5:
 				handleRequest5(req);
+				break;
+			case 6:
+				handleRequest6(req, ServerConsts.brzinaAutobusa, ServerConsts.brzinaPesaka);
 				break;
 			default:
 				log.write("Thread["+ owner.getId() + "] " +"Nepoznat request type = " + req.type);
@@ -75,7 +150,7 @@ public class RequestHandler
 			
 		} catch (IOException e)
 		{
-			log.write("Thread["+ owner.getId() + "] " + "failed to please");;
+			log.write("Thread["+ owner.getId() + "] " + "failed to please");
 	    	log.write(e.getMessage());
 		} catch (Exception e)
 		{
@@ -355,6 +430,7 @@ public class RequestHandler
 		ArrayList<Integer> predjeniPutevi = new ArrayList<>();
 		double minimalnoPesacenje = calcDistance(req.srcLat, req.srcLon, req.destLat, req.destLon);
 		double gornjaGranica = minimalnoPesacenje;
+		
 		for(int i = 0; i < linije.length; ++i)
 		{
 			if(linije[i] != null)
@@ -376,11 +452,17 @@ public class RequestHandler
 					dZ = calcDistance(stanica, req.destLat, req.destLon);
 					//moze da se optimizuje tako sto se jednom izracunaju i zapamte u cvorovima njihove udaljenosti do cilja i starta
 					
-					if(dS < startnaUdaljenost)
+					/*if(i == 47)
+					{
+						System.out.println(stanica.toString() + " dS=" + dS + " dZ=" + dZ);
+					}*/
+					
+					if(dS<startnaUdaljenost && nijeLazniStart(stanica, linije[i], startnaUdaljenost, zavrsnaUdaljenost, req))
 					{
 						startnaUdaljenost = dS;
 						zavrsnaUdaljenost = gornjaGranica;
 						start = stanica;
+						stop = null;
 						startPredjeniPut = predjeniPut;
 					}
 					
@@ -446,6 +528,34 @@ public class RequestHandler
 		
 		out.flush();
 		
+	}
+	
+	private boolean nijeLazniStart(Cvor stanica, Linija linija, double startnaUdaljenost, double zavrsnaUdaljenost, Request req)
+	{
+		boolean p = false;
+		double dS, dZ;
+		
+		dS = calcDistance(stanica, req.srcLat, req.srcLon);
+		
+		Veza v = null;
+		
+		while((v = stanica.vratiVezu(linija)) != null)
+		{
+			stanica = v.destination;
+			
+			dZ = calcDistance(stanica, req.destLat, req.destLon);
+			
+			if(dS + dZ < startnaUdaljenost + zavrsnaUdaljenost)
+			{
+				p = true;
+				break;
+			}
+			
+			if(stanica == linija.pocetnaStanica)
+				break;
+		}
+		
+		return p;
 	}
 
 	//rezim minimalnog pesacenja (napredni)
@@ -557,7 +667,358 @@ public class RequestHandler
 	}
 	
 	
-	//predjeni put do stanice stanica, linijom linija
+	//A*
+	public void handleRequest6(Request req, double brzinaAutobusa, double brzinaPesacenja)
+	{
+		boolean nadjenPut = false;
+		//napravi pseudo Stanice start i end
+		//int id = matricaUdaljenosti[0].length - 1;
+		Cvor pseudoStart = new Cvor(-1, "pseudoStart", req.srcLat, req.srcLon);
+		//--id;
+		Cvor pseudoEnd = new Cvor(-2, "pseudoEnd", req.destLat, req.destLon);
+		
+		pseudoEnd.heuristika = 0.0;
+		pseudoEnd.linijom = null;
+		pseudoEnd.prethodnaStanica = pseudoStart;
+		pseudoEnd.cenaPutanje = calcDistance(req.srcLat, req.srcLon, req.destLat, req.destLon)/brzinaPesacenja;
+		pseudoStart.heuristika = calcDistance(req.srcLat, req.srcLon, req.destLat, req.destLon)/brzinaAutobusa;
+		pseudoStart.linijom = null;
+		pseudoStart.prethodnaStanica = null;
+		pseudoStart.cenaPutanje = 0.0;
+		
+		owner.getGraf().resetujCvorove();
+		
+		//izvuci sve stanice u niz
+		Cvor stanice[] = owner.getGraf().getStanice().toArray(new Cvor[owner.getGraf().getStanice().size()]);
+		
+		PrioritetnaListaCvorova lista = new PrioritetnaListaCvorova();
+		
+		//izracunaj heuristike
+		for(int i = 0; i < stanice.length; ++i)
+		{
+			if(stanice[i] != null)
+			{
+				stanice[i].heuristika = calcDistance(stanice[i], req.destLat, req.destLon)/brzinaAutobusa;
+				stanice[i].cenaPutanje = calcDistance(stanice[i], req.srcLat, req.srcLon)/brzinaPesacenja;
+				
+				stanice[i].linijom = null;
+				stanice[i].prethodnaStanica = pseudoStart;
+				
+				stanice[i].status = StruktureConsts.CVOR_SMESTEN;
+			}
+			
+			lista.pushPriority(stanice[i]);
+		}
+		
+		pseudoStart.status = StruktureConsts.CVOR_OBRADJEN;
+		pseudoEnd.status = StruktureConsts.CVOR_SMESTEN;
+		lista.pushPriority(pseudoEnd); //dodaj i pseudoEnd u priority list
+		
+		Cvor radniCvor = null;
+		Cvor tempCvor = null;
+		ArrayList<Veza> potomciVeze = null;
+		Veza v = null;
+		Linija l = null;
+		double kasnjenje = 0.0;
+		
+		while(!lista.isEmpty())
+		{
+			radniCvor = lista.remove(0);
+			
+			radniCvor.status = StruktureConsts.CVOR_OBRADJEN;
+			
+			if(radniCvor == pseudoEnd)
+			{
+				nadjenPut = true;
+				break;
+			}
+			
+			//pokupi decu cvorove i update statistike
+			potomciVeze = radniCvor.veze;
+			for(int i = 0; i < potomciVeze.size(); ++i)
+			{
+				v = potomciVeze.get(i);
+				tempCvor = v.destination;
+				
+				if(tempCvor.status == StruktureConsts.CVOR_OBRADJEN)
+					continue;
+				
+				if(v.linija == radniCvor.linijom)
+				{
+					if(tempCvor.cenaPutanje > radniCvor.cenaPutanje + v.weight/brzinaAutobusa)
+					{
+						lista.remove(tempCvor);
+						tempCvor.linijom = v.linija;
+						tempCvor.prethodnaStanica = radniCvor;
+						tempCvor.cenaPutanje = radniCvor.cenaPutanje + v.weight/brzinaAutobusa;
+						lista.pushPriority(tempCvor);
+					}
+				} else
+				{
+					if(tempCvor.cenaPutanje > radniCvor.cenaPutanje + v.weight/brzinaAutobusa + (kasnjenje = izracunajKasnjenjeLinije(v.linija, radniCvor, brzinaAutobusa)))
+					{
+						lista.remove(tempCvor);
+						tempCvor.linijom = v.linija;
+						tempCvor.prethodnaStanica = radniCvor;
+						tempCvor.cenaPutanje = radniCvor.cenaPutanje + v.weight/brzinaAutobusa + kasnjenje;
+						lista.pushPriority(tempCvor);
+					}
+				}
+			}
+			
+			//obradi pesacenje do svih stanica
+			for(int j = 0; j < stanice.length; ++j)
+			{
+				if(stanice[j] != radniCvor && stanice[j].status != StruktureConsts.CVOR_OBRADJEN)
+				{
+					double udaljenost = matricaUdaljenosti[radniCvor.id][stanice[j].id];
+					if(stanice[j].cenaPutanje > radniCvor.cenaPutanje + udaljenost/brzinaPesacenja)
+					{
+						lista.remove(stanice[j]);
+						stanice[j].linijom = null;
+						stanice[j].prethodnaStanica = radniCvor;
+						stanice[j].cenaPutanje = radniCvor.cenaPutanje + udaljenost/brzinaPesacenja;
+						lista.pushPriority(stanice[j]);
+					}
+				}
+			}
+			//pesacenje do cilja jer on nije u nizu stanice[]
+			double udaljenost = calcDistance(radniCvor, pseudoEnd.lat, pseudoEnd.lon);
+			if(pseudoEnd.cenaPutanje > radniCvor.cenaPutanje + udaljenost/brzinaPesacenja)
+			{
+				lista.remove(pseudoEnd);
+				pseudoEnd.linijom = null;
+				pseudoEnd.prethodnaStanica = radniCvor;
+				pseudoEnd.cenaPutanje = radniCvor.cenaPutanje + udaljenost/brzinaPesacenja;
+				lista.pushPriority(pseudoEnd);
+			}
+		}
+		
+		if(nadjenPut)
+		{
+			Cvor c = pseudoEnd;
+			System.out.println("");
+			System.out.println("RESENJE:");
+			while(c != null)
+			{
+				System.out.println(c + " --Linijom-- " + c.linijom + " --Cena--" + c.cenaPutanje);
+				c = c.prethodnaStanica;
+			}
+		} else
+		{
+			System.out.println("Nisam uspeo da nadjem put :(");
+		}
+		
+	}
+	
+	//kasnjenje u sekundama
+	private double izracunajKasnjenjeLinije(Linija l, Cvor c, double brzinaAutobusa)
+	{
+		LocalDateTime realLifeTime = LocalDateTime.now();
+		int realLifeHour = realLifeTime.getHour();
+		int realLifeMinute = realLifeTime.getMinute();
+		int realLifeSecond = realLifeTime.getSecond();
+		DayOfWeek realLifeDay = realLifeTime.getDayOfWeek();
+		
+		double secondsToWaitForBus = -1.0;
+		
+		int busTravelSeconds = izracunajKorekciju(l, c);
+		int busTravelMinutes = busTravelSeconds / 60;
+		int busTravelHours = busTravelSeconds / 3600;
+		
+		//System.out.println("Bus travel seconds = " + busTravelSeconds);
+		
+		int futureShiftSeconds = (int) c.cenaPutanje;
+		
+		int cvorHours = realLifeHour;
+		int cvorMinutes = realLifeMinute;
+		int cvorSeconds = realLifeSecond;
+		DayOfWeek cvorDay = realLifeDay;
+		
+		DayOfWeek targetDay = cvorDay;
+		int targetHour = cvorHours, targetMinute = cvorMinutes;
+		
+		int sourceCvorHours, sourceCvorMinutes;
+		DayOfWeek sourceCvorDay;
+		
+		cvorSeconds += futureShiftSeconds;
+		
+		cvorMinutes += cvorSeconds / 60;
+		
+		if(cvorSeconds % 60 > 30)
+			++cvorMinutes;
+		
+		cvorHours += cvorMinutes / 60;
+		
+		while(cvorHours > 24)
+		{
+			cvorDay = cvorDay.plus(1);
+			cvorHours -= 24;
+		}
+		
+		sourceCvorDay = cvorDay;
+		sourceCvorHours = cvorHours;
+		sourceCvorMinutes = cvorMinutes - busTravelMinutes;
+		
+		while(sourceCvorMinutes < 0)
+		{
+			sourceCvorMinutes += 60;
+			sourceCvorHours -= 1;
+		}
+		
+		sourceCvorHours -= busTravelHours;
+		while(sourceCvorHours < 0)
+		{
+			sourceCvorHours += 24;
+			sourceCvorDay.minus(1);
+		}
+		
+		int mat[][] = null;
+		if(sourceCvorDay == DayOfWeek.SUNDAY)
+		{
+			int i = 0, h = sourceCvorHours;
+			DayOfWeek d = sourceCvorDay;
+			mat = l.matNedelja;
+			while(secondsToWaitForBus == -1)
+			{
+				if(mat[h][i] != -1)
+				{
+					if(sourceCvorDay.getValue() != d.getValue() || h > sourceCvorHours || mat[h][i] >= sourceCvorMinutes)
+					{
+						targetDay = d;
+						targetHour = h;
+						targetMinute = mat[h][i];
+						
+						secondsToWaitForBus = 0;
+					}
+				} else
+				{
+					++h;
+					if(h > 24)
+					{
+						d = d.plus(1);
+						h -= 24;
+						if(d == DayOfWeek.SATURDAY)
+							mat = l.matSubota;
+						else if(d == DayOfWeek.SUNDAY)
+							mat = l.matNedelja;
+						else
+							mat = l.matRadni;
+					}
+					i = -1;
+				}
+				
+				++i;
+			}
+		} else if(sourceCvorDay == DayOfWeek.SATURDAY)
+		{
+			int i = 0, h = sourceCvorHours;
+			DayOfWeek d = sourceCvorDay;
+			mat = l.matSubota;
+			while(secondsToWaitForBus == -1)
+			{
+				if(mat[h][i] != -1)
+				{
+					if(sourceCvorDay.getValue() != d.getValue() || h > sourceCvorHours || mat[h][i] >= sourceCvorMinutes)
+					{
+						targetDay = d;
+						targetHour = h;
+						targetMinute = mat[h][i];
+						
+						secondsToWaitForBus = 0;
+					}
+				} else
+				{
+					++h;
+					if(h > 24)
+					{
+						d = d.plus(1);
+						h -= 24;
+						if(d == DayOfWeek.SATURDAY)
+							mat = l.matSubota;
+						else if(d == DayOfWeek.SUNDAY)
+							mat = l.matNedelja;
+						else
+							mat = l.matRadni;
+					}
+					i = -1;
+				}
+				
+				++i;
+			}
+		} else
+		{
+			int i = 0, h = sourceCvorHours;
+			DayOfWeek d = sourceCvorDay;
+			mat = l.matRadni;
+			while(secondsToWaitForBus == -1)
+			{
+				if(mat[h][i] != -1)
+				{
+					if(sourceCvorDay.getValue() != d.getValue() || h > sourceCvorHours || mat[h][i] >= sourceCvorMinutes)
+					{
+						targetDay = d;
+						targetHour = h;
+						targetMinute = mat[h][i];
+						
+						secondsToWaitForBus = 0;
+					}
+				} else
+				{
+					++h;
+					if(h > 24)
+					{
+						d = d.plus(1);
+						h -= 24;
+						if(d == DayOfWeek.SATURDAY)
+							mat = l.matSubota;
+						else if(d == DayOfWeek.SUNDAY)
+							mat = l.matNedelja;
+						else
+							mat = l.matRadni;
+					}
+					i = -1;
+				}
+				
+				++i;
+			}
+		}
+		
+		if(targetDay.getValue() != cvorDay.getValue())
+		{
+			int minuti = 60 - cvorMinutes;
+			if(minuti > 0)
+				cvorHours++;
+			int sati = 24 - cvorHours;
+			sati += targetHour;
+			minuti += targetMinute;
+			
+			sati += minuti / 60;
+			minuti %= 60;
+			secondsToWaitForBus = sati*3600 + minuti*60 + busTravelMinutes*60;
+			
+			DayOfWeek tempDay = cvorDay;
+			if(tempDay.plus(1) != targetDay)
+			{
+				tempDay = tempDay.plus(1);
+				while(tempDay != targetDay)
+				{
+					tempDay = tempDay.plus(1);
+					secondsToWaitForBus += 24*3600;
+				}
+			}
+			
+		} else
+		{
+			int minuti = targetMinute + targetHour*60 - cvorMinutes - cvorHours*60;
+			
+			secondsToWaitForBus = minuti*60 + busTravelMinutes*60;
+		}
+		
+		return secondsToWaitForBus; //vracamo rezultat u sekundama
+	}
+	
+	//predjeni put do stanice stanica, linijom linija [vreme!?!?]
 	private int izracunajKorekciju(Linija linija, Cvor stanica, int predjeniPut)
 	{
 		return (int) (predjeniPut/ServerConsts.brzinaAutobusa);
@@ -603,625 +1064,7 @@ public class RequestHandler
 	
 	
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	/*private void pleaseRequest0()
-	{
-		String line = null;
-		NovaOsoba no = null;
-		boolean succ = false;
-		int fileSize = 0;
-		int id = -1;
-		
-		try
-		{
-			if((line = in.readLine()) != null)
-				no = gson.fromJson(line, NovaOsoba.class);
-			else
-				return;
-			
-			succ = DataLayer.dodajOsobu(no.getUser(), no.getPass(), no.getIme(), no.getPrezime(), no.getUser()+no.getSlika(), no.getBrTelefona());
-			
-			fileSize = no.getVelicinaSlike();
-			
-			if(fileSize > 0)
-				succ &= acceptPicture(fileSize, no.getUser()+no.getSlika());
-			
-			id = DataLayer.loginCheck(no.getUser(), no.getPass());
-			
-			if(succ)
-				out.write("true\n" + id +"\n");
-			else
-				out.write("false\n");
-			
-			out.flush();
-		} catch (IOException e)
-		{
-			log.write(e.getMessage());
-		}
-		
-	}
-	
-	private boolean acceptPicture(int fileSize, String fName)
-	{
-		int totalBytesRead = 0;
-		byte[] data = null;
-		BufferedOutputStream fStream = null;
-		
-		data = new byte[fileSize];
-		
-		try
-		{
-			while (totalBytesRead < fileSize) 
-			{
-				int bytesRemaining = fileSize - totalBytesRead;
-				int bytesRead;
 
-				bytesRead = istream.read(data, totalBytesRead, bytesRemaining);
-
-				if (bytesRead == -1) 
-				{
-					log.write("SOCKET CLOSED! before picture sending was finished");
-					break; // socket has been closed
-				}
-	
-				totalBytesRead += bytesRead;
-			}
-			
-			fStream = new BufferedOutputStream(new FileOutputStream(ServerConsts.SLIKE_PATH + fName));
-			
-			fStream.write(data);
-			fStream.flush();
-			fStream.close();
-		} catch (Exception e)
-		{
-			log.write(e.getMessage());
-			return false;
-		}
-		
-		return true;
-	}
-	
-	//vrati osobu
-	private void pleaseRequest1()
-	{
-		String line = null;
-		int id = -1;
-		
-		try
-		{
-			if((line = in.readLine()) != null)
-				id = Integer.parseInt(line);
-			else
-				return;
-			
-			OsobaPlus op = DataLayer.getOsobaPlus(id);
-			String buf = op.toString();
-			
-		    File file = new File(ServerConsts.SLIKE_PATH + op.getSlika());
-		    
-		    out.write(buf + "\n" + (int) file.length() + "\n");
-			out.flush();
-		    
-		    byte[] fileData = new byte[(int) file.length()];
-		    DataInputStream dis = new DataInputStream(new FileInputStream(file));
-		    dis.readFully(fileData);
-			ostream.write(fileData);
-			ostream.flush();
-			dis.close();
-		} catch (Exception e)
-		{
-			log.write(e.getMessage());
-		}
-	}
-	
-	//vrati sve questove za osobu
-	private void pleaseRequest2()
-	{
-		String line = null;
-		int id = -1;
-		
-		try
-		{
-			if((line = in.readLine()) != null)
-				id = Integer.parseInt(line);
-			else
-				return;
-			
-			ArrayList<Quest> questovi = DataLayer.getAllQuestsOsoba(id);
-			
-			String buf = gson.toJson(questovi);
-			
-			out.write(buf);
-			out.flush();
-		} catch (Exception e)
-		{
-			log.write(e.getMessage());
-		}
-	}
-	
-	//vrati sve osobe sa poenima i sortirane po broju poena
-	private void pleaseRequest3()
-	{
-		ArrayList<OsobaReducedPlus> osobe = DataLayer.getAllOsobeSorted();
-		
-		String buf = gson.toJson(osobe);
-		
-		out.write(buf);
-		out.flush();
-	}
-	
-	//vrati sve prijatelje osobe
-	private void pleaseRequest4()
-	{
-		String line = null;
-		int id = -1;
-		
-		try
-		{
-			if((line = in.readLine()) != null)
-				id = Integer.parseInt(line);
-			else
-				return;
-			
-			ArrayList<OsobaReduced> prijatelji = DataLayer.getAllPrijateljiOsobe(id);
-			
-			String buf = gson.toJson(prijatelji);
-			
-			out.write(buf);
-			out.flush();
-		} catch (Exception e)
-		{
-			log.write(e.getMessage());
-		}
-	}
-	
-	//vrati sve planine
-	private void pleaseRequest5()
-	{
-		ArrayList<Planina> planine = DataLayer.getAllPlanine();
-		
-		String buf = gson.toJson(planine);
-		
-		out.write(buf);
-		out.flush();
-	}
-	
-	//login check
-	private void pleaseRequest6()
-	{
-		String user = "";
-		String pass = "";
-		int id = -1;
-		
-		try
-		{
-			if((user = in.readLine()) != null)
-				if((pass = in.readLine()) != null)
-					id = DataLayer.loginCheck(user, pass);
-			
-		} catch (IOException e)
-		{
-			log.write(e.getMessage());
-		} finally
-		{
-			out.write(Integer.toString(id));
-			out.flush();
-		}
-	}
-	
-	//questovi i mesta
-	private void pleaseRequest7()
-	{
-		String questName,placeNumberS,planinaIDS,osobaIDS;
-		int placeNumber,planinaID,osobaID;
-		placeNumber = -1;
-		planinaID = -1;
-		osobaID = -1;
-		
-		try
-		{
-			if((questName = in.readLine()) != null)
-				if((planinaIDS = in.readLine()) != null)
-					if((osobaIDS = in.readLine()) != null)
-						if((placeNumberS = in.readLine()) != null)
-						{
-							placeNumber = Integer.parseInt(placeNumberS);
-							planinaID = Integer.parseInt(planinaIDS);
-							osobaID = Integer.parseInt(osobaIDS);
-						}
-			int questID = DataLayer.addQuest(questName, planinaID, osobaID, placeNumber);
-			if(questID == -1)
-			{
-				out.write("false");
-				out.flush();
-				return; 
-			}
-			NovoMesto novoMesto = null;
-			for(int i = 0; i < placeNumber; i++)
-			{
-				String line = in.readLine();
-				novoMesto = gson.fromJson(line, NovoMesto.class);
-				boolean b = DataLayer.addMesto(novoMesto, questID);
-				if(!b)
-				{
-					DataLayer.DeleteQuest(questID);
-					out.write("false");
-					out.flush();
-					return; 
-				}
-			}
-		} catch (IOException e)
-		{
-			log.write(e.getMessage());
-			out.write("false");
-			out.flush();
-			return; 
-		} 
-		catch(Exception e)
-		{
-			log.write(e.getMessage());
-			out.write("false");
-			out.flush();
-			return; 
-		}
-		
-		out.write("true");
-		out.flush();
-	}
-	
-	//dodavanje prijateljstva
-	private void pleaseRequest8()
-	{
-		int id1 = -1;
-		int id2 = -1;
-		String line = "";
-		boolean succ = false;
-			
-		try
-		{
-			if((line = in.readLine()) != null)
-			{
-				id1 = Integer.parseInt(line);
-				if((line = in.readLine()) != null)
-				{
-					id2 = Integer.parseInt(line);
-					succ = DataLayer.dodajPrijateljstvo(id1, id2);
-				}
-			}
-				
-		} catch (IOException e)
-		{
-			log.write(e.getMessage());
-		} finally
-		{
-			if(succ)
-				out.write("true");
-			else
-				out.write("false");
-			out.flush();
-		}
-	}
-		
-	//vrati sve questove za osobu
-	private void pleaseRequest9()
-	{
-		String line = null;
-		int id = -1;
-		
-		try
-		{
-			if((line = in.readLine()) != null)
-				id = Integer.parseInt(line);
-			else
-				return;
-				
-			ArrayList<Quest> questovi = DataLayer.getAllQuestsPlanina(id);
-				
-			String buf = gson.toJson(questovi);
-				
-			out.write(buf);
-			out.flush();
-		} catch (Exception e)
-		{
-			log.write(e.getMessage());
-		}
-	}
-	
-	//ping
-	private void pleaseRequest10()
-	{
-		String line = null;
-		OsobaMesto ping = null;
-			
-		try
-		{
-			if((line = in.readLine()) != null)
-				ping = gson.fromJson(line, OsobaMesto.class);
-			else
-				return;
-			
-			if(ping.getId() < 1)
-				return;
-			
-			updateOsobaOnline(ping);
-					
-		} catch (Exception e)
-		{
-			log.write("pleaseRequest10() / PING failed");
-			log.write(e.getMessage());
-		}
-	}
-	
-	public synchronized void updateOsobaOnline(OsobaMesto osoba)
-	{
-		osoba.setIp(clientSocket.getRemoteSocketAddress().toString());
-		
-		synchronized(Main.onlineOsobe)
-		{
-			int pos = Main.onlineOsobe.indexOf(osoba);
-			
-			if(pos == -1)
-			{
-				osoba.settStamp(System.currentTimeMillis() / 1000L);
-				Main.onlineOsobe.add(osoba);
-			}
-			else
-			{
-				OsobaMesto o = Main.onlineOsobe.get(pos);
-				o.settStamp(System.currentTimeMillis() / 1000L);
-				o.setLat(osoba.getLat());
-				o.setLon(osoba.getLon());
-				o.setIp(osoba.getIp());
-			}
-		}
-	}
-	
-	//->osoba_id, quest_id <-sva_mesta za taj quest, dokle_je_stigo 
-	private void pleaseRequest11()
-	{
-		String line1 = null;
-		String line2 = null;
-		int osoba_id = -1;
-		int quest_id = -1;
-				
-		try
-		{
-			if((line1 = in.readLine())!=null && (line2 = in.readLine())!=null)
-			{
-				osoba_id = Integer.parseInt(line1);
-				quest_id = Integer.parseInt(line2);
-			}
-			else
-			{
-				log.write("pleaseRequest11(" + osoba_id + ", " + quest_id + ") failed");
-				return;
-			}
-			
-			ArrayList<NovoMesto> mesta = DataLayer.getAllMestaQuest(quest_id);
-			int progress = DataLayer.getOsobaProgressQuest(osoba_id, quest_id);
-			
-			String buf = gson.toJson(mesta) + "\n" + progress;
-			
-			out.write(buf);
-			out.flush();
-						
-		} catch (Exception e)
-		{
-			log.write("pleaseRequest11(" + osoba_id + ", " + quest_id + ") failed");
-			log.write(e.getMessage());
-		}
-	}
-	
-	//vrati sve prijatelje osobe online
-	private void pleaseRequest12()
-	{
-		String line = null;
-		int id = -1;
-			
-		try
-		{
-			if((line = in.readLine()) != null)
-				id = Integer.parseInt(line);
-			else
-				return;
-			
-			ArrayList<OsobaReduced> prijatelji = DataLayer.getAllPrijateljiOsobe(id);
-			ArrayList<OnlinePrijatelj> onlinePrijatelji = new ArrayList<>();
-			
-			synchronized(Main.onlineOsobe)
-			{
-				for(int i = 0; i < prijatelji.size(); ++i)
-				{
-					OsobaReduced or = prijatelji.get(i);
-					OsobaMesto om = new OsobaMesto(or.getId(), 0.0, 0.0, null);
-					int pos = Main.onlineOsobe.indexOf(om);
-					if(pos != -1)
-					{
-						OsobaMesto o = Main.onlineOsobe.get(pos);
-						if((System.currentTimeMillis()/1000L-o.gettStamp())<(ServerConsts.PING_TIMEOUT*2.0))
-							onlinePrijatelji.add(new OnlinePrijatelj(o.getId(), or.getUser(), o.getLat(), o.getLon(), o.getIp()));
-						else
-							Main.onlineOsobe.remove(pos);
-					}
-				}
-			}
-			
-			String buf = gson.toJson(onlinePrijatelji);
-			
-			out.write(buf);
-			out.flush();
-		} catch (Exception e)
-		{
-			log.write(e.getMessage());
-		}
-	}
-	
-	//update napredak na questu i poene
-	private void pleaseRequest13()
-	{
-		String line1 = null;
-		String line2 = null;
-		String line3 = null;
-		String line4 = null;
-		int osoba_id = -1;
-		int quest_id = -1;
-		int brMesta = -1;
-		int poeni = 0;
-				
-		try
-		{
-			if((line1 = in.readLine())!=null && (line2 = in.readLine())!=null && (line3 = in.readLine())!=null && (line4 = in.readLine())!=null)
-			{
-				osoba_id = Integer.parseInt(line1);
-				quest_id = Integer.parseInt(line2);
-				brMesta = Integer.parseInt(line3);
-				poeni = Integer.parseInt(line4);
-			}
-			else
-				return;
-			
-			DataLayer.updateNapredak(osoba_id, quest_id, brMesta, poeni);
-			
-		} catch (Exception e)
-		{
-			log.write(e.getMessage());
-		}
-	}
-	
-	//zapocni quest
-	private void pleaseRequest14()
-	{
-		int osoba_id = -1;
-		int quest_id = -1;
-		String line = null;
-		boolean succ = false;
-			
-		try
-		{
-			if((line = in.readLine()) != null)
-			{
-				osoba_id = Integer.parseInt(line);
-				if((line = in.readLine()) != null)
-				{
-					quest_id = Integer.parseInt(line);
-					succ = DataLayer.zapocniQuest(osoba_id, quest_id);
-				}
-			}
-				
-		} catch (IOException e)
-		{
-			log.write(e.getMessage());
-		} finally
-		{
-			if(succ)
-				out.write("true");
-			else
-				out.write("false");
-			out.flush();
-		}
-	}
-	
-	//vrati sve online prijatelje u nekom radijusu (dodaj i mesta u radijusu)
-	private void pleaseRequest15()
-	{
-		String line1 = null;
-		String line2 = null;
-		String line3 = null;
-		String line4 = null;
-		int id = -1;
-		double lat = 0.0;
-		double lon = 0.0;
-		double distance = 0.0;
-		
-		try
-		{
-			if((line1 = in.readLine())!=null && (line2 = in.readLine())!=null && (line3 = in.readLine())!=null && (line4 = in.readLine())!=null)
-			{
-				id = Integer.parseInt(line1);
-				lat = Double.parseDouble(line2);
-				lon = Double.parseDouble(line3);
-				distance = Double.parseDouble(line4);
-			}
-			else
-				return;
-			
-			ArrayList<OsobaReduced> prijatelji = DataLayer.getAllPrijateljiOsobe(id);
-			ArrayList<OnlinePrijatelj> onlinePrijatelji = new ArrayList<>();
-			
-			synchronized(Main.onlineOsobe)
-			{
-				for(int i = 0; i < prijatelji.size(); ++i)
-				{
-					OsobaReduced or = prijatelji.get(i);
-					OsobaMesto om = new OsobaMesto(or.getId(), 0.0, 0.0, null);
-					int pos = Main.onlineOsobe.indexOf(om);
-					if(pos != -1)
-					{
-						OsobaMesto o = Main.onlineOsobe.get(pos);
-						if((System.currentTimeMillis()/1000L-o.gettStamp())<(ServerConsts.PING_TIMEOUT*1.5) && (calcDistance(lat, lon, o.getLat(), o.getLon()) < distance))
-							onlinePrijatelji.add(new OnlinePrijatelj(o.getId(), or.getUser(), o.getLat(), o.getLon(), o.getIp()));
-						else
-							Main.onlineOsobe.remove(pos);
-					}
-				}
-			}
-			
-			String buf1 = gson.toJson(onlinePrijatelji);
-			String buf2 = gson.toJson(DataLayer.getAllMestaURadijusu(lat, lon, distance));
-			String buf3 = gson.toJson(DataLayer.getAllOsobaRadiQuestForOsoba(id));
-			
-			out.write(buf1 + "\n" + buf2 + "\n" + buf3 + "\n");
-			out.flush();
-		} catch (Exception e)
-		{
-			log.write(e.getMessage());
-		}
-	}
-	
-	private void pleaseRequest16()
-	{
-		String line = null;
-		int questId = -1;
-		
-		try
-		{
-			if((line = in.readLine()) != null)
-				questId = Integer.parseInt(line);
-			else
-				return;
-			
-			Quest q = DataLayer.getQuest(questId);
-			Planina p = DataLayer.getPlanina(q.getPlanina_id());
-			String buf = q.toString() + "\n" + p.toString() + "\n";
-			
-			out.write(buf);
-			out.flush();
-
-		} catch (Exception e)
-		{
-			log.write(e.getMessage());
-		}
-	}*/
-	
 	public static double calcDistance(Cvor stanica, double lat2, double long2)
 	{
 	    double a, c;
@@ -1232,6 +1075,11 @@ public class RequestHandler
 	    c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
 	    return 6371000 * c;
+	}
+	
+	public double calcDistance(Cvor cvor1, Cvor cvor2)
+	{
+	    return matricaUdaljenosti[cvor1.id][cvor2.id];
 	}
 	
 	public static double calcDistance(double lat1, double long1, double lat2, double long2)
@@ -1245,5 +1093,4 @@ public class RequestHandler
 
 	    return 6371000 * c;
 	}
-	
 }
