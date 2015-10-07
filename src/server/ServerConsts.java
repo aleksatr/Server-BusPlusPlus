@@ -11,6 +11,7 @@ public final class ServerConsts
 	public static final String DB_VER_FILE = "db.ver";
 	public static final Double brzinaAutobusa = 5.4;								//brzina autobusa u m/s
 	public static final Double brzinaPesaka = 0.7659;								//brzina pesaka u m/s
+	public static final Double brzinaPesakaZaMinWalk = 0.0001;						//brzina pesaka u m/s za rezim minimalnog pesacenja
 	public static double grafDBVer = 0;
 	public static double rVoznjeDBVer = 0;
 	

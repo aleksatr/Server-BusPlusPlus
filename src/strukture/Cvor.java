@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import datalayer.DatumVremeStanica;
+
 public class Cvor
 {
 	public Integer id = null;								//jedinstveni id stanice
@@ -19,6 +21,7 @@ public class Cvor
 	public transient Linija linijom = null;							//kojom linijom se doslo sa prethodne stanice na ovu	[akcija primenjena na roditelju da bi se generisalo ovo stanje]
 	public transient double cenaPutanje = 0.0;						//cena putanje od pocetnog cvora do ovog cvora, putanjom koja je oznacenja pokazivacima na roditelje (prethodnaStanica), u sekundama
 	public transient double heuristika = Double.MAX_VALUE;
+	public transient DatumVremeStanica vremeDolaskaAutobusaNaPrethodnuStanicu = null;
 	
 	public Cvor() {}
 	
@@ -75,5 +78,8 @@ public class Cvor
 		this.status = StruktureConsts.CVOR_NEOBRADJEN;
 		this.prethodnaStanica = null;
 		this.linijom = null;
+		this.cenaPutanje = 0.0;
+		this.heuristika = Double.MAX_VALUE;
+		this.vremeDolaskaAutobusaNaPrethodnuStanicu = null;
 	}
 }

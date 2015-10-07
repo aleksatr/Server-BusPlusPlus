@@ -16,7 +16,7 @@ public class Response
 	public Integer korekcije[] = null;							//korekcije za klasican red voznje, korekcija korekcije[i] odgovara liniji linije[i] za stanicu stanice[i], pokriva slucaj 3, 3*, 3**, 3***
 	public ArrayList<DatumVremeStanica> vremenaDolaska = null; 	//vremena dolaska buseva na stanice, za napredni red voznje se salju samo za stanice na kojima se preseda, kad se menja linija
 																//za klasican red voznje su tu vreman dolaska na najblize stanice (vise njih zbog 3, 3*, 3**)
-	public Integer size = null;									//velicina baze koja se salje klijentu
+	public Integer size = null;									//velicina baze koja se salje klijentu //ili cena putovanja u naprednom redu voznje! cena putanje u A*
 	public Double dbVer = null;									//verzija baze koja se potencijalno salje klijentu, -1 ako se ne salje baza
 
 	public Response() {}
