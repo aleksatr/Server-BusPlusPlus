@@ -143,7 +143,7 @@ public class RequestHandler
 				handleRequest4(req);																	//ekonomicni
 				break;
 			case 5:
-				handleRequest5(req);																	//optimalni ekonomicni
+				handleRequest5(req, ServerConsts.brzinaAutobusa, ServerConsts.brzinaPesaka);																	//optimalni ekonomicni
 				break;
 			case 6:
 				handleRequest6(req, ServerConsts.brzinaAutobusa, ServerConsts.brzinaPesaka);			//rezim vremenske optimalnosti
@@ -570,9 +570,92 @@ public class RequestHandler
 	}
 	
 	//optimalni ekonomicni
-	private void handleRequest5(Request req)
+	private void handleRequest5(Request req, double brzinaAutobusa, double brzinaPesacenja)
 	{
+		Linija linije[] = owner.getGradskeLinije().linije;
+		owner.getGraf().resetujCvorove();
+		//Cvor responseStanice[] = new Cvor[2]; //stanice za response prvo source stanica, drugo destination stanica
+		//ArrayList<Linija> responseLinije = new ArrayList<>();
+		//ArrayList<Integer> predjeniPutevi = new ArrayList<>();
+		//double minimalnoPesacenje = calcDistance(req.srcLat, req.srcLon, req.destLat, req.destLon);
+		//double gornjaGranica = minimalnoPesacenje;
 		
+		int linijeResenja[][] = new int[linije.length][3]; //start_stanica.id, end_stanica.id, cena_puta
+		//DatumVremeStanica vremenaDolaska[] = new DatumVremeStanica[linije.length];
+		
+		for(int i = 0; i < linije.length; ++i)
+		{
+			if(linije[i] != null)
+			{
+				Cvor stanica = linije[i].pocetnaStanica;
+				Cvor start = null, stop = null;
+				Veza v = null;
+				int predjeniPut = 0, startPredjeniPut = 0, endPredjeniPut = 0;
+				double startnaUdaljenost = Double.MAX_VALUE;//gornjaGranica;
+				double zavrsnaUdaljenost = Double.MAX_VALUE;//gornjaGranica;
+				double dS, dZ;
+				
+				while((v = stanica.vratiVezu(linije[i])) != null)
+				{
+					predjeniPut += v.weight;
+					stanica = v.destination;
+					
+					dS = calcDistance(stanica, req.srcLat, req.srcLon);
+					dZ = calcDistance(stanica, req.destLat, req.destLon);
+					//moze da se optimizuje tako sto se jednom izracunaju i zapamte u cvorovima njihove udaljenosti do cilja i starta
+					
+					if(dS<startnaUdaljenost && nijeLazniStart(stanica, linije[i], startnaUdaljenost, zavrsnaUdaljenost, req))
+					{
+						startnaUdaljenost = dS;
+						zavrsnaUdaljenost = Double.MAX_VALUE;;
+						start = stanica;
+						stop = null;
+						startPredjeniPut = predjeniPut;
+					}
+					
+					if(dZ < zavrsnaUdaljenost)
+					{
+						zavrsnaUdaljenost = dZ;
+						stop = stanica;
+						endPredjeniPut = predjeniPut;
+					}
+					
+					if(stanica == linije[i].pocetnaStanica)
+						break;
+				}
+				
+				linijeResenja[i][0] = start.id;
+				linijeResenja[i][1] = stop.id;
+				linijeResenja[i][2] = (int) ((startnaUdaljenost + zavrsnaUdaljenost)/brzinaPesacenja + (endPredjeniPut - startPredjeniPut)/brzinaAutobusa); //na ovo treba da se doda jos i vreme cekanja busa na stanici
+				
+				start.cenaPutanje = startnaUdaljenost/brzinaPesacenja;
+				
+				linijeResenja[i][2] += (int) izracunajKasnjenjeLinije2(linije[i], start, brzinaAutobusa);
+			}
+		}
+		
+		int minCena = Integer.MAX_VALUE;
+		ArrayList<Integer> responseLinije = new ArrayList<>();
+		ArrayList<DatumVremeStanica> vremenaDolaska = new ArrayList<>();
+		
+		double cenaPesacenja;
+		
+		for(int i = 0; i < linije.length; ++i)
+			if(linije[i] != null && linijeResenja[i][2] < minCena)
+				minCena = linijeResenja[i][2];
+		
+		if((cenaPesacenja = calcDistance(req.srcLat, req.srcLon, req.destLat, req.destLon)/brzinaPesacenja) < minCena)
+		{
+			minCena = (int) cenaPesacenja;
+			responseLinije.add(null);
+		} else if(cenaPesacenja <= 1.5 * minCena)
+			responseLinije.add(null);
+		
+		for(int i = 0; i < linije.length; ++i)
+			if(linije[i] != null && linijeResenja[i][2] <= 1.5 * minCena)
+			{
+				
+			}
 	}
 	
 	//A*, koristi se za optimalni i za MIN_WALK
@@ -676,7 +759,7 @@ public class RequestHandler
 						tempTime = tempTime.plusHours((((long)radniCvor.cenaPutanje + kasnjenje)/3600)%24);
 						tempTime = tempTime.plusMinutes((((long)radniCvor.cenaPutanje + kasnjenje)/60)%60);
 						tempTime = tempTime.plusSeconds(((long)radniCvor.cenaPutanje + kasnjenje)%60);
-						DatumVremeStanica vremeDolaska = new DatumVremeStanica(radniCvor.id, tempTime.getSecond(), tempTime.getMinute(), tempTime.getHour(), tempTime.getDayOfWeek().getValue(), tempTime.getMonthValue(), tempTime.getYear());
+						DatumVremeStanica vremeDolaska = new DatumVremeStanica(radniCvor.id, v.linija.id, tempTime.getSecond(), tempTime.getMinute(), tempTime.getHour(), tempTime.getDayOfWeek().getValue(), tempTime.getMonthValue(), tempTime.getYear());
 						tempCvor.vremeDolaskaAutobusaNaPrethodnuStanicu = vremeDolaska;
 						
 						lista.pushPriority(tempCvor);
@@ -878,7 +961,7 @@ public class RequestHandler
 						tempTime = tempTime.plusHours((((long)radniCvor.cenaPutanje + kasnjenje)/3600)%24);
 						tempTime = tempTime.plusMinutes((((long)radniCvor.cenaPutanje + kasnjenje)/60)%60);
 						tempTime = tempTime.plusSeconds(((long)radniCvor.cenaPutanje + kasnjenje)%60);
-						DatumVremeStanica vremeDolaska = new DatumVremeStanica(radniCvor.id, tempTime.getSecond(), tempTime.getMinute(), tempTime.getHour(), tempTime.getDayOfWeek().getValue(), tempTime.getMonthValue(), tempTime.getYear());
+						DatumVremeStanica vremeDolaska = new DatumVremeStanica(radniCvor.id, v.linija.id, tempTime.getSecond(), tempTime.getMinute(), tempTime.getHour(), tempTime.getDayOfWeek().getValue(), tempTime.getMonthValue(), tempTime.getYear());
 						tempCvor.vremeDolaskaAutobusaNaPrethodnuStanicu = vremeDolaska;
 						
 						lista.pushPriority(tempCvor);
