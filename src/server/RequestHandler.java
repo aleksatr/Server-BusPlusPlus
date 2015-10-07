@@ -137,13 +137,13 @@ public class RequestHandler
 				handleRequest1(req);
 				break;	
 			case 3:
-				handleRequest3(req);
+				handleRequest3(req);																	//klasicni red voznje
 				break;
 			case 4:
-				handleRequest4(req);
+				handleRequest4(req);																	//ekonomicni
 				break;
 			case 5:
-				handleRequest5(req);
+				handleRequest5(req);																	//optimalni ekonomicni
 				break;
 			case 6:
 				handleRequest6(req, ServerConsts.brzinaAutobusa, ServerConsts.brzinaPesaka);			//rezim vremenske optimalnosti
@@ -568,118 +568,14 @@ public class RequestHandler
 		
 		return p;
 	}
-
-	//rezim minimalnog pesacenja (napredni)
+	
+	//optimalni ekonomicni
 	private void handleRequest5(Request req)
 	{
-		Graf g = owner.getGraf();
-		g.resetujCvorove();
-		Cvor stanice[] = g.getStanice().toArray(new Cvor[g.getStanice().size()]);
-		Cvor sourceCvor = null;
-		Linija linije[] = g.getGradskeLinije().linije;
-		double startPesacenje[] = new double[stanice.length];
-		double endPesacenje[] = new double[stanice.length];
-		
-		ArrayList<Cvor> startStanice = new ArrayList<>();
-		ArrayList<Cvor> endStanice = new ArrayList<>();
-		
-		for(int i = 0; i < stanice.length; ++i)
-		{
-			startPesacenje[i] = calcDistance(stanice[i], req.srcLat, req.srcLon);
-			endPesacenje[i] = calcDistance(stanice[i], req.destLat, req.destLon);
-		}
-		
-		//sortiraj stanice po blizini startne pozicije
-		for(int i = 1; i < stanice.length; ++i)
-		{
-	        double key = startPesacenje[i];
-	        Cvor pomC = stanice[i];
-	        int j = i-1;
-	        while((j >= 0) && (startPesacenje[j] > key))
-	        {
-	        	startPesacenje[j+1] = startPesacenje[j];
-	            stanice[j+1] = stanice[j];
-	            --j;
-	        }
-	        startPesacenje[j+1] = key;
-	        stanice[j+1] = pomC;
-	    }
-		
-		
-		//izaberi top 5 startnih tanica
-		int k = 0;
-		ArrayList<Linija> skupljeneLinije = new ArrayList<>();
-		while(startStanice.size() < StruktureConsts.MIN_PESACENJE_START_NUM)
-		{
-			boolean p = false;
-			Linija l = null;
-			for(int j = 0; j < stanice[k].veze.size(); ++j)
-			{
-				if(!skupljeneLinije.contains((l = stanice[k].veze.get(j).linija)))
-				{
-					p = true;
-					skupljeneLinije.add(l); 
-				}
-			}
-			
-			if(p)
-				startStanice.add(stanice[k]);
-			
-			++k;
-		}
-		
-		//////////////////////////////////////////////////////////////////////////////////
-		
-		//soritraj stanice po udaljenosti od cilja, neopadajuci
-		for(int i = 1; i < stanice.length; ++i)
-		{
-	        double key = endPesacenje[i];
-	        Cvor pomC = stanice[i];
-	        int j = i-1;
-	        while((j >= 0) && (endPesacenje[j] > key))
-	        {
-	        	endPesacenje[j+1] = endPesacenje[j];
-	            stanice[j+1] = stanice[j];
-	            --j;
-	        }
-	        endPesacenje[j+1] = key;
-	        stanice[j+1] = pomC;
-	    }
-		
-		//izaberi top 5 end stanica
-		k = 0;
-		skupljeneLinije = new ArrayList<>();
-		while(endStanice.size() < StruktureConsts.MIN_PESACENJE_END_NUM)
-		{
-			boolean p = false;
-			Linija l = null;
-			for(int j = 0; j < stanice[k].veze.size(); ++j)
-			{
-				if(!skupljeneLinije.contains((l = stanice[k].veze.get(j).linija)))
-				{
-					p = true;
-					skupljeneLinije.add(l); 
-				}
-			}
-			
-			if(p)
-				endStanice.add(stanice[k]);
-			
-			++k;
-		}
-		
-		/////////////////////////////////////////////////////////////////////////////////////
-		
-		boolean nasoPut = false;
-		
-		for(int s = 0; s<StruktureConsts.MIN_PESACENJE_START_NUM && !nasoPut; ++s)
-			for(int e = 0; e<StruktureConsts.MIN_PESACENJE_END_NUM && !nasoPut; ++s)
-				nasoPut = g.BFS(startStanice.get(s), endStanice.get(e));
 		
 	}
 	
-	
-	//A*
+	//A*, koristi se za optimalni i za MIN_WALK
 	public void handleRequest6(Request req, double brzinaAutobusa, double brzinaPesacenja)
 	{
 		boolean nadjenPut = false;
@@ -1040,8 +936,116 @@ public class RequestHandler
 		log.write("A* END");
 	}
 	
-	//ovo je depricated :D (zaglupi A* zbog zaokruzivanja prilikom prevodjenja iz sec u min i hour)
+	//rezim minimalnog pesacenja (napredni) (nedovrsen, stari pristup)
+	private void handleRequest8(Request req)
+	{
+		Graf g = owner.getGraf();
+		g.resetujCvorove();
+		Cvor stanice[] = g.getStanice().toArray(new Cvor[g.getStanice().size()]);
+		Cvor sourceCvor = null;
+		Linija linije[] = g.getGradskeLinije().linije;
+		double startPesacenje[] = new double[stanice.length];
+		double endPesacenje[] = new double[stanice.length];
+
+		ArrayList<Cvor> startStanice = new ArrayList<>();
+		ArrayList<Cvor> endStanice = new ArrayList<>();
+
+		for(int i = 0; i < stanice.length; ++i)
+		{
+			startPesacenje[i] = calcDistance(stanice[i], req.srcLat, req.srcLon);
+			endPesacenje[i] = calcDistance(stanice[i], req.destLat, req.destLon);
+		}
+
+		//sortiraj stanice po blizini startne pozicije
+		for(int i = 1; i < stanice.length; ++i)
+		{
+			double key = startPesacenje[i];
+			Cvor pomC = stanice[i];
+			int j = i-1;
+			while((j >= 0) && (startPesacenje[j] > key))
+			{
+				startPesacenje[j+1] = startPesacenje[j];
+				stanice[j+1] = stanice[j];
+				--j;
+			}
+			startPesacenje[j+1] = key;
+			stanice[j+1] = pomC;
+		}
+
+
+		//izaberi top 5 startnih tanica
+		int k = 0;
+		ArrayList<Linija> skupljeneLinije = new ArrayList<>();
+		while(startStanice.size() < StruktureConsts.MIN_PESACENJE_START_NUM)
+		{
+			boolean p = false;
+			Linija l = null;
+			for(int j = 0; j < stanice[k].veze.size(); ++j)
+			{
+				if(!skupljeneLinije.contains((l = stanice[k].veze.get(j).linija)))
+				{
+					p = true;
+					skupljeneLinije.add(l); 
+				}
+			}
+
+			if(p)
+				startStanice.add(stanice[k]);
+
+			++k;
+		}
+
+		//////////////////////////////////////////////////////////////////////////////////
+
+		//soritraj stanice po udaljenosti od cilja, neopadajuci
+		for(int i = 1; i < stanice.length; ++i)
+		{
+			double key = endPesacenje[i];
+			Cvor pomC = stanice[i];
+			int j = i-1;
+			while((j >= 0) && (endPesacenje[j] > key))
+			{
+				endPesacenje[j+1] = endPesacenje[j];
+				stanice[j+1] = stanice[j];
+				--j;
+			}
+			endPesacenje[j+1] = key;
+			stanice[j+1] = pomC;
+		}
+
+		//izaberi top 5 end stanica
+		k = 0;
+		skupljeneLinije = new ArrayList<>();
+		while(endStanice.size() < StruktureConsts.MIN_PESACENJE_END_NUM)
+		{
+			boolean p = false;
+			Linija l = null;
+			for(int j = 0; j < stanice[k].veze.size(); ++j)
+			{
+				if(!skupljeneLinije.contains((l = stanice[k].veze.get(j).linija)))
+				{
+					p = true;
+					skupljeneLinije.add(l); 
+				}
+			}
+
+			if(p)
+				endStanice.add(stanice[k]);
+
+			++k;
+		}
+
+		/////////////////////////////////////////////////////////////////////////////////////
+
+		boolean nasoPut = false;
+
+		for(int s = 0; s<StruktureConsts.MIN_PESACENJE_START_NUM && !nasoPut; ++s)
+			for(int e = 0; e<StruktureConsts.MIN_PESACENJE_END_NUM && !nasoPut; ++s)
+				nasoPut = g.BFS(startStanice.get(s), endStanice.get(e));
+
+	}
 	
+	//ovo je depricated :D (zaglupi A* zbog zaokruzivanja prilikom prevodjenja iz sec u min i hour)
 	//kasnjenje u sekundama
 	private double izracunajKasnjenjeLinije(Linija l, Cvor c, double brzinaAutobusa)
 	{
@@ -1250,7 +1254,7 @@ public class RequestHandler
 		return secondsToWaitForBus; //vracamo rezultat u sekundama
 	}
 	
-	//kasnjenje linije u sekundama
+	//kasnjenje linije u sekundama, za cvor c, u odredjeno vreme, za liniju l
 	@SuppressWarnings("deprecation")
 	private long izracunajKasnjenjeLinije2(Linija l, Cvor c, double brzinaAutobusa)
 	{
@@ -1391,8 +1395,6 @@ public class RequestHandler
 		return izracunajKorekciju(linija, targetStanica, predjeniPut);
 	}
 	
-	
-
 	public static double calcDistance(Cvor stanica, double lat2, double long2)
 	{
 	    double a, c;
