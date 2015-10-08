@@ -88,7 +88,7 @@ public class Main
 		
 		
 		try
-		{
+		{ 
 			serverSocket = new ServerSocket(ServerConsts.PORT);
 		} catch(IOException e) 
 		{
