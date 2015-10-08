@@ -62,6 +62,9 @@ public class Main
 			
 			verStr = dbVerBufferedInput.readLine();
 			ServerConsts.rVoznjeDBVer = Double.parseDouble(verStr);
+			
+			verStr = dbVerBufferedInput.readLine();
+			ServerConsts.putanjeDBVer = Double.parseDouble(verStr);
 		} catch (FileNotFoundException e)
 		{
 			log.write("Exception caught when trying to open file " + ServerConsts.DB_VER_FILE);

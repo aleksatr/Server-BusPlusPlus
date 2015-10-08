@@ -131,10 +131,13 @@ public class RequestHandler
 			switch(req.type)
 			{
 			case 0:
-				handleRequest0(req);
+				handleRequest0(req);		//bpp.db
 				break;
 			case 1:
-				handleRequest1(req);
+				handleRequest1(req);		//red_voznje.db
+				break;	
+			case 2:
+				handleRequest2(req);		//putanje_buseva.db
 				break;	
 			case 3:
 				handleRequest3(req);																	//klasicni red voznje
@@ -245,6 +248,44 @@ public class RequestHandler
 			out.flush();
 		}
 			
+	}
+	
+	//klijent proverava da li ima najnoviju verziju baze putanje_buseva.db
+	private void handleRequest2(Request req)
+	{
+
+		if(req.dbVer < ServerConsts.putanjeDBVer)
+		{
+			File file = new File(ServerConsts.SQLITE_PUTANJE_BUSEVA_DB_NAME);
+
+			out.write((new Response(req.type, null, null, null, null, (int) file.length(), ServerConsts.putanjeDBVer)).toString() + "\n");
+			out.flush();
+
+			byte[] fileData = new byte[(int) file.length()];
+			DataInputStream dis;
+			try
+			{
+				dis = new DataInputStream(new FileInputStream(file));
+				dis.readFully(fileData);
+				ostream.write(fileData);
+				ostream.flush();
+				dis.close();
+			} catch (FileNotFoundException e)
+			{
+				log.write("Thread [" + owner.getId() + "] Exception caught when trying to open file " + ServerConsts.SQLITE_PUTANJE_BUSEVA_DB_NAME);
+				log.write(e.getMessage());
+			} catch (IOException e)
+			{
+				log.write("Thread [" + owner.getId() + "] Exception caught when trying to read file " + ServerConsts.SQLITE_PUTANJE_BUSEVA_DB_NAME);
+				log.write(e.getMessage());
+			}
+
+		} else
+		{
+			out.write((new Response(req.type, null, null, null, null, -1, null)).toString() + "\n");
+			out.flush();
+		}
+
 	}
 	
 	//klasican red voznje
@@ -574,14 +615,11 @@ public class RequestHandler
 	{
 		Linija linije[] = owner.getGradskeLinije().linije;
 		owner.getGraf().resetujCvorove();
-		//Cvor responseStanice[] = new Cvor[2]; //stanice za response prvo source stanica, drugo destination stanica
-		//ArrayList<Linija> responseLinije = new ArrayList<>();
-		//ArrayList<Integer> predjeniPutevi = new ArrayList<>();
-		//double minimalnoPesacenje = calcDistance(req.srcLat, req.srcLon, req.destLat, req.destLon);
-		//double gornjaGranica = minimalnoPesacenje;
 		
-		int linijeResenja[][] = new int[linije.length][3]; //start_stanica.id, end_stanica.id, cena_puta
-		//DatumVremeStanica vremenaDolaska[] = new DatumVremeStanica[linije.length];
+		LocalDateTime currentTime = LocalDateTime.now();
+		LocalDateTime tempTime = null;
+		
+		int linijeResenja[][] = new int[linije.length][5]; //start_stanica.id, end_stanica.id, cena_puta, vreme pesacenja do starta, kasnjenje linije na tu stanicu
 		
 		for(int i = 0; i < linije.length; ++i)
 		{
@@ -627,35 +665,55 @@ public class RequestHandler
 				linijeResenja[i][0] = start.id;
 				linijeResenja[i][1] = stop.id;
 				linijeResenja[i][2] = (int) ((startnaUdaljenost + zavrsnaUdaljenost)/brzinaPesacenja + (endPredjeniPut - startPredjeniPut)/brzinaAutobusa); //na ovo treba da se doda jos i vreme cekanja busa na stanici
-				
+				linijeResenja[i][3] = (int) (startnaUdaljenost/brzinaPesacenja);
+
 				start.cenaPutanje = startnaUdaljenost/brzinaPesacenja;
 				
-				linijeResenja[i][2] += (int) izracunajKasnjenjeLinije2(linije[i], start, brzinaAutobusa);
+				linijeResenja[i][4] = (int) izracunajKasnjenjeLinije2(linije[i], start, brzinaAutobusa);
+						
+				linijeResenja[i][2] += linijeResenja[i][4];
 			}
 		}
 		
 		int minCena = Integer.MAX_VALUE;
 		ArrayList<Integer> responseLinije = new ArrayList<>();
+		//responseLinije[i] odgovara kao start stanica responseStanice[2*i] i kao end stanica responseStanice[2*i+1]
+		ArrayList<Integer> responseStanice = new ArrayList<>();
 		ArrayList<DatumVremeStanica> vremenaDolaska = new ArrayList<>();
 		
-		double cenaPesacenja;
+		int cenaPesacenja;
 		
 		for(int i = 0; i < linije.length; ++i)
 			if(linije[i] != null && linijeResenja[i][2] < minCena)
 				minCena = linijeResenja[i][2];
 		
-		if((cenaPesacenja = calcDistance(req.srcLat, req.srcLon, req.destLat, req.destLon)/brzinaPesacenja) < minCena)
-		{
-			minCena = (int) cenaPesacenja;
-			responseLinije.add(null);
-		} else if(cenaPesacenja <= 1.5 * minCena)
-			responseLinije.add(null);
+		if((cenaPesacenja = (int) (calcDistance(req.srcLat, req.srcLon, req.destLat, req.destLon)/brzinaPesacenja)) < minCena)
+			minCena = cenaPesacenja;
 		
 		for(int i = 0; i < linije.length; ++i)
 			if(linije[i] != null && linijeResenja[i][2] <= 1.5 * minCena)
 			{
+				responseLinije.add(linije[i].id);
+				responseStanice.add(linijeResenja[i][0]);
+				responseStanice.add(linijeResenja[i][1]);
 				
+				tempTime = currentTime.plusDays((linijeResenja[i][3] + linijeResenja[i][4])/86400);
+				tempTime = tempTime.plusHours(((linijeResenja[i][3] + linijeResenja[i][4])/3600)%24);
+				tempTime = tempTime.plusMinutes(((linijeResenja[i][3] + linijeResenja[i][4])/60)%60);
+				tempTime = tempTime.plusSeconds((linijeResenja[i][3] + linijeResenja[i][4])%60);
+				DatumVremeStanica vremeDolaska = new DatumVremeStanica(linijeResenja[i][0], linije[i].id, tempTime.getSecond(), tempTime.getMinute(), tempTime.getHour(), tempTime.getDayOfWeek().getValue(), tempTime.getMonthValue(), tempTime.getYear());
+				vremenaDolaska.add(vremeDolaska);
 			}
+		
+		if(cenaPesacenja <= 1.5 * minCena)
+			responseLinije.add(null);
+		
+		String responseStr = (new Response(req.type, responseStanice.toArray(new Integer[responseStanice.size()]), responseLinije.toArray(new Integer[responseLinije.size()]), null, vremenaDolaska, null, null)).toString();
+		
+		log.write("Thread [" + owner.getId() + "] client=" +clientSocket.getInetAddress().toString()+ " RESPONSE= " + responseStr + " (vise se isplati pesacenje!?)");
+		out.write(responseStr + "\n");
+
+		out.flush();
 	}
 	
 	//A*, koristi se za optimalni i za MIN_WALK
@@ -755,12 +813,17 @@ public class RequestHandler
 						tempCvor.prethodnaStanica = radniCvor;
 						tempCvor.cenaPutanje = radniCvor.cenaPutanje + v.weight/brzinaAutobusa + kasnjenje;
 						
-						tempTime = currentTime.plusDays(((long)radniCvor.cenaPutanje + kasnjenje)/86400);
-						tempTime = tempTime.plusHours((((long)radniCvor.cenaPutanje + kasnjenje)/3600)%24);
-						tempTime = tempTime.plusMinutes((((long)radniCvor.cenaPutanje + kasnjenje)/60)%60);
-						tempTime = tempTime.plusSeconds(((long)radniCvor.cenaPutanje + kasnjenje)%60);
-						DatumVremeStanica vremeDolaska = new DatumVremeStanica(radniCvor.id, v.linija.id, tempTime.getSecond(), tempTime.getMinute(), tempTime.getHour(), tempTime.getDayOfWeek().getValue(), tempTime.getMonthValue(), tempTime.getYear());
-						tempCvor.vremeDolaskaAutobusaNaPrethodnuStanicu = vremeDolaska;
+						if(req.type != 7) //ako je MIN_WALK ne racunaj vremena dolaska autobusa na stanicu
+						{
+							tempTime = currentTime.plusDays(((long)radniCvor.cenaPutanje + kasnjenje)/86400);
+							tempTime = tempTime.plusHours((((long)radniCvor.cenaPutanje + kasnjenje)/3600)%24);
+							tempTime = tempTime.plusMinutes((((long)radniCvor.cenaPutanje + kasnjenje)/60)%60);
+							tempTime = tempTime.plusSeconds(((long)radniCvor.cenaPutanje + kasnjenje)%60);
+							DatumVremeStanica vremeDolaska = new DatumVremeStanica(radniCvor.id, v.linija.id, tempTime.getSecond(), tempTime.getMinute(), tempTime.getHour(), tempTime.getDayOfWeek().getValue(), tempTime.getMonthValue(), tempTime.getYear());
+							tempCvor.vremeDolaskaAutobusaNaPrethodnuStanicu = vremeDolaska;
+						}
+						else
+							tempCvor.vremeDolaskaAutobusaNaPrethodnuStanicu = null;
 						
 						lista.pushPriority(tempCvor);
 					}
@@ -1019,7 +1082,7 @@ public class RequestHandler
 		log.write("A* END");
 	}
 	
-	//rezim minimalnog pesacenja (napredni) (nedovrsen, stari pristup)
+	//rezim minimalnog pesacenja (napredni) (nedovrsen, stari pristup, sad do radi handleRequest6)
 	private void handleRequest8(Request req)
 	{
 		Graf g = owner.getGraf();
