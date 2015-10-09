@@ -163,11 +163,11 @@ public class RequestHandler
 		} catch (IOException e)
 		{
 			log.write("Thread["+ owner.getId() + "] " + "failed to please");
-	    	log.write(e.getMessage());
+	    	log.write(e.getMessage()); e.printStackTrace();
 		} catch (Exception e)
 		{
 			log.write("Thread["+ owner.getId() + "] " + "Nepoznat request format = " + line);
-			log.write("Thread["+ owner.getId() + "] " + "failed to please");
+			log.write("Thread["+ owner.getId() + "] " + "failed to please"); e.printStackTrace();
 	    	log.write(e.getMessage());
 		}
 		
@@ -664,14 +664,18 @@ public class RequestHandler
 				
 				linijeResenja[i][0] = start.id;
 				linijeResenja[i][1] = stop.id;
-				linijeResenja[i][2] = (int) ((startnaUdaljenost + zavrsnaUdaljenost)/brzinaPesacenja + (endPredjeniPut - startPredjeniPut)/brzinaAutobusa); //na ovo treba da se doda jos i vreme cekanja busa na stanici
-				linijeResenja[i][3] = (int) (startnaUdaljenost/brzinaPesacenja);
-
-				start.cenaPutanje = startnaUdaljenost/brzinaPesacenja;
-				
-				linijeResenja[i][4] = (int) izracunajKasnjenjeLinije2(linije[i], start, brzinaAutobusa);
-						
-				linijeResenja[i][2] += linijeResenja[i][4];
+				if(start != stop)
+				{
+					linijeResenja[i][2] = (int) ((startnaUdaljenost + zavrsnaUdaljenost)/brzinaPesacenja + (endPredjeniPut - startPredjeniPut)/brzinaAutobusa); //na ovo treba da se doda jos i vreme cekanja busa na stanici
+					linijeResenja[i][3] = (int) (startnaUdaljenost/brzinaPesacenja);
+	
+					start.cenaPutanje = startnaUdaljenost/brzinaPesacenja;
+					
+					linijeResenja[i][4] = (int) izracunajKasnjenjeLinije2(linije[i], start, brzinaAutobusa);
+							
+					linijeResenja[i][2] += linijeResenja[i][4];
+				} else
+					linijeResenja[i][2] = Integer.MAX_VALUE;
 			}
 		}
 		
@@ -680,6 +684,7 @@ public class RequestHandler
 		//responseLinije[i] odgovara kao start stanica responseStanice[2*i] i kao end stanica responseStanice[2*i+1]
 		ArrayList<Integer> responseStanice = new ArrayList<>();
 		ArrayList<DatumVremeStanica> vremenaDolaska = new ArrayList<>();
+		ArrayList<Integer> responseKorekcije = new ArrayList<>();
 		
 		int cenaPesacenja;
 		
@@ -694,6 +699,7 @@ public class RequestHandler
 			if(linije[i] != null && linijeResenja[i][2] <= 1.5 * minCena)
 			{
 				responseLinije.add(linije[i].id);
+				responseKorekcije.add(linijeResenja[i][2]);
 				responseStanice.add(linijeResenja[i][0]);
 				responseStanice.add(linijeResenja[i][1]);
 				
@@ -706,11 +712,14 @@ public class RequestHandler
 			}
 		
 		if(cenaPesacenja <= 1.5 * minCena)
+		{
 			responseLinije.add(null);
+			responseKorekcije.add(cenaPesacenja);
+		}
 		
-		String responseStr = (new Response(req.type, responseStanice.toArray(new Integer[responseStanice.size()]), responseLinije.toArray(new Integer[responseLinije.size()]), null, vremenaDolaska, null, null)).toString();
+		String responseStr = (new Response(req.type, responseStanice.toArray(new Integer[responseStanice.size()]), responseLinije.toArray(new Integer[responseLinije.size()]), responseKorekcije.toArray(new Integer[responseKorekcije.size()]), vremenaDolaska, null, null)).toString();
 		
-		log.write("Thread [" + owner.getId() + "] client=" +clientSocket.getInetAddress().toString()+ " RESPONSE= " + responseStr + " (vise se isplati pesacenje!?)");
+		log.write("Thread [" + owner.getId() + "] client=" +clientSocket.getInetAddress().toString()+ " RESPONSE= " + responseStr);
 		out.write(responseStr + "\n");
 
 		out.flush();
@@ -813,7 +822,7 @@ public class RequestHandler
 						tempCvor.prethodnaStanica = radniCvor;
 						tempCvor.cenaPutanje = radniCvor.cenaPutanje + v.weight/brzinaAutobusa + kasnjenje;
 						
-						if(req.type != 7) //ako je MIN_WALK ne racunaj vremena dolaska autobusa na stanicu
+						if(req.type == 6) //ako je MIN_WALK ne racunaj vremena dolaska autobusa na stanicu
 						{
 							tempTime = currentTime.plusDays(((long)radniCvor.cenaPutanje + kasnjenje)/86400);
 							tempTime = tempTime.plusHours((((long)radniCvor.cenaPutanje + kasnjenje)/3600)%24);
@@ -861,11 +870,17 @@ public class RequestHandler
 		
 		if(nadjenPut)
 		{
+			if(req.type == 7)
+				minWalkPostProcessing(pseudoStart, pseudoEnd);
+			
 			Cvor c = pseudoEnd;
 			
 			Response response = new Response();
 			response.type = req.type;
-			response.size = (int) pseudoEnd.cenaPutanje;	//procenjena cena putovanja
+			
+			if(req.type == 6)
+				response.size = (int) pseudoEnd.cenaPutanje;	//procenjena cena putovanja
+			
 			ArrayList<Integer> responseStanice = new ArrayList<>();
 			ArrayList<Integer> responseLinije = new ArrayList<>();
 			ArrayList<DatumVremeStanica> responseVremenaDolaska = new ArrayList<>();
@@ -1508,6 +1523,109 @@ public class RequestHandler
 		return targetSeconds - sourceSeconds;
 	}
 	
+	private void minWalkPostProcessing(Cvor pseudoStart, Cvor pseudoEnd)
+	{
+		double koeficijentUbrzanjaBuseva = 1.0;
+		ArrayList<Cvor> putanja = new ArrayList<>();
+
+		Cvor c = pseudoEnd;
+		while(c != null)
+		{
+			putanja.add(0, c);
+			
+			c = c.prethodnaStanica;
+		}
+		
+		double akumuliranaCena = 0.0;
+		
+		for(int i = 1; i < putanja.size()-1; ++i)
+		{
+			c = putanja.get(i);
+			
+			if(i > 1)
+			{
+				if(c.linijom != null)
+					akumuliranaCena += c.prethodnaStanica.vratiVezu(c.linijom).weight/(koeficijentUbrzanjaBuseva * ServerConsts.brzinaAutobusa);
+				else
+					akumuliranaCena += calcDistance(c.prethodnaStanica, c)/ServerConsts.brzinaPesaka;
+				
+				c.cenaPutanje = c.heuristika*ServerConsts.brzinaAutobusa/ServerConsts.brzinaPesaka
+								+ akumuliranaCena;
+			}
+			else
+				c.cenaPutanje = c.heuristika*ServerConsts.brzinaAutobusa/ServerConsts.brzinaPesaka;
+		}
+		
+		double minCena = Double.MAX_VALUE;
+		int minI = -1;
+		
+		for(int i = 1; i < putanja.size()-1; ++i)
+		{
+			c = putanja.get(i);
+			
+			if(minCena > c.cenaPutanje)
+			{
+				minCena = c.cenaPutanje;
+				minI = i;
+			}
+		}
+		
+		if(minI != -1)
+			pseudoEnd.prethodnaStanica = putanja.get(minI);
+		
+		//---------------------------------obradjen je kraj puta
+		
+		ArrayList<Cvor> obradjenaPutanja = new ArrayList<>();
+		ArrayList<Linija> obradjeneLinije = new ArrayList<>();
+		
+		c = pseudoEnd;
+		while(c != null)
+		{
+			c.heuristika = calcDistance(pseudoStart.lat, pseudoStart.lon, c.lat, c.lon)/ServerConsts.brzinaPesaka;
+			
+			obradjenaPutanja.add(0, c);
+			obradjeneLinije.add(0, c.linijom);
+			
+			c = c.prethodnaStanica;
+		}
+		
+		Linija l;
+		akumuliranaCena = 0.0;
+		//ovo ovde je jedan veliki znak pitanja :D
+		for(int i = 1; i < obradjenaPutanja.size()-1; ++i)
+		{
+			c = obradjenaPutanja.get(i);
+			l = obradjeneLinije.get(i+1);
+			
+			if(l != null)
+				akumuliranaCena += c.vratiVezu(l).weight/ServerConsts.brzinaAutobusa;
+			else
+				akumuliranaCena += calcDistance(c, obradjenaPutanja.get(i+1))/ServerConsts.brzinaPesaka;
+		
+			c.cenaPutanje = c.heuristika - akumuliranaCena; //pogotovo minus :)
+		}
+		
+		minCena = Double.MAX_VALUE;
+		minI = -1;
+		
+		for(int i = 1; i < obradjenaPutanja.size()-1; ++i)
+		{
+			c = obradjenaPutanja.get(i);
+			
+			if(minCena > c.cenaPutanje)
+			{
+				minCena = c.cenaPutanje;
+				minI = i;
+			}
+		}
+		
+		if(minI != -1)
+		{
+			c = obradjenaPutanja.get(minI).prethodnaStanica = pseudoStart;
+			c.linijom = null;
+		}
+	}
+	
 	//predjeni put do stanice stanica, linijom linija [vreme!?!?]
 	private int izracunajKorekciju(Linija linija, Cvor stanica, int predjeniPut)
 	{
@@ -1555,7 +1673,10 @@ public class RequestHandler
 	
 	public double calcDistance(Cvor cvor1, Cvor cvor2)
 	{
-	    return matricaUdaljenosti[cvor1.id][cvor2.id];
+		if(cvor1.id > 0 && cvor2.id > 0)
+			return matricaUdaljenosti[cvor1.id][cvor2.id];
+		else
+			return calcDistance(cvor1.lat, cvor1.lon, cvor2.lat, cvor2.lon);
 	}
 	
 	public static double calcDistance(double lat1, double long1, double lat2, double long2)
