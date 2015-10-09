@@ -815,7 +815,12 @@ public class RequestHandler
 					}
 				} else
 				{
-					if(tempCvor.cenaPutanje > radniCvor.cenaPutanje + v.weight/brzinaAutobusa + (kasnjenje = izracunajKasnjenjeLinije2(v.linija, radniCvor, brzinaAutobusa)))
+					if(req.type == 7)
+						kasnjenje = 10;		//za min_walk je kasnjenje konstanta
+					else
+						kasnjenje = izracunajKasnjenjeLinije2(v.linija, radniCvor, brzinaAutobusa);
+					
+					if(tempCvor.cenaPutanje > radniCvor.cenaPutanje + v.weight/brzinaAutobusa + kasnjenje)
 					{
 						lista.remove(tempCvor);
 						tempCvor.linijom = v.linija;
@@ -1624,6 +1629,9 @@ public class RequestHandler
 			c = obradjenaPutanja.get(minI).prethodnaStanica = pseudoStart;
 			c.linijom = null;
 		}
+		
+		//---------------------------obradjen pocetak puta
+		
 	}
 	
 	//predjeni put do stanice stanica, linijom linija [vreme!?!?]
