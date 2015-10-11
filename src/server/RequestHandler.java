@@ -816,7 +816,7 @@ public class RequestHandler
 				} else
 				{
 					if(req.type == 7)
-						kasnjenje = 10;		//za min_walk je kasnjenje konstanta
+						kasnjenje = 0;		//za min_walk je kasnjenje konstanta
 					else
 						kasnjenje = izracunajKasnjenjeLinije2(v.linija, radniCvor, brzinaAutobusa);
 					
@@ -850,6 +850,12 @@ public class RequestHandler
 				if(stanice[j] != radniCvor && stanice[j].status != StruktureConsts.CVOR_OBRADJEN)
 				{
 					double udaljenost = matricaUdaljenosti[radniCvor.id][stanice[j].id];
+					
+					//ovo je korekcija za MIN_WALK (treba, popraviti)
+					if(req.type == 7 && radniCvor.linijom != null)
+						udaljenost += 150;
+					
+					
 					if(stanice[j].cenaPutanje > radniCvor.cenaPutanje + udaljenost/brzinaPesacenja)
 					{
 						lista.remove(stanice[j]);
