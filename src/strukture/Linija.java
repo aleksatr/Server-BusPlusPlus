@@ -15,6 +15,9 @@ public class Linija
 	public transient int matSubota[][] = null;
 	public transient int matNedelja[][] = null;
 	
+	//za min walk prioritet linije (heuristka najblize stanice na liniji)
+	public transient double prioritet = Double.MAX_VALUE;
+	
 	public Linija() {}
 	
 	public Linija(Integer id, String broj, String smer, String naziv, Cvor pocetnaStanica, int matRadni[][], int matSubota[][], int matNedelja[][])

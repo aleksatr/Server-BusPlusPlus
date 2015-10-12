@@ -159,6 +159,10 @@ public class Graf
 	{
 		for(int i = 0; i < cvorovi.size(); ++i)
 			cvorovi.get(i).resetStatus();
+		
+		for(Linija l : gl.linije)
+			if(l != null)
+				l.prioritet = Double.MAX_VALUE;
 	}
 	
 	public double calcDistance(Cvor c1, Cvor c2)
