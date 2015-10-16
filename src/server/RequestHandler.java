@@ -1031,11 +1031,14 @@ public class RequestHandler
 	//crowd sensing
 	private void handleRequest10(Request req)
 	{
-		CSInfo csInfo = new CSInfo(req.srcLat, req.srcLon, req.crowded, req.stuffy);
 		Linija targetLinija = owner.getGradskeLinije().linije[req.linija];
 		
 		if(targetLinija != null)
-			targetLinija.addCSInfo(csInfo);
+		{
+			CSInfo csInfo = new CSInfo(req.srcLat, req.srcLon, req.crowded, req.stuffy, 
+										targetLinija.broj.replace("*", ""), targetLinija.broj, req.message);
+			owner.getGradskeLinije().addCSInfo(csInfo);
+		}
 		
 	}
 	
