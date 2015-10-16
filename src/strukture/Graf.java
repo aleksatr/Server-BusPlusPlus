@@ -165,6 +165,15 @@ public class Graf
 				l.prioritet = Double.MAX_VALUE;
 	}
 	
+	public Cvor vratiCvor(int id)
+	{
+		for(Cvor c : this.cvorovi)
+			if(c.id == id)
+				return c;
+		
+		return null;
+	}
+	
 	public double calcDistance(Cvor c1, Cvor c2)
 	{
 	    double a, c;

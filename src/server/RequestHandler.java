@@ -13,6 +13,7 @@ import javax.sound.sampled.TargetDataLine;
 
 import com.google.gson.*;
 
+import datalayer.CSInfo;
 import datalayer.DatumVremeStanica;
 import strukture.*;
 
@@ -94,19 +95,22 @@ public class RequestHandler
 				handleRequest2(req);		//putanje_buseva.db
 				break;	
 			case 3:
-				handleRequest3(req);																	//klasicni red voznje
+				handleRequest3(req);		//klasicni red voznje
 				break;
 			case 4:
-				handleRequest4(req);																	//ekonomicni
+				handleRequest4(req);		//ekonomicni
 				break;
 			case 5:
-				handleRequest5(req, ServerConsts.brzinaPesaka);																	//optimalni ekonomicni
+				handleRequest5(req, ServerConsts.brzinaPesaka);			//optimalni ekonomicni																	//optimalni ekonomicni
 				break;
 			case 6:
 				handleRequest6(req, ServerConsts.brzinaPesaka);			//rezim vremenske optimalnosti
 				break;
 			case 7:
 				handleRequest6(req, ServerConsts.brzinaPesakaZaMinWalk);	//MIN WALK - rezim minimalnog pesacenja
+				break;
+			case 10:
+				handleRequest10(req);										//crowd sensing
 				break;
 			default:
 				log.write("Thread["+ owner.getId() + "] " +"Nepoznat request type = " + req.type);
@@ -1024,9 +1028,20 @@ public class RequestHandler
 
 	}
 	
+	//crowd sensing
+	private void handleRequest10(Request req)
+	{
+		CSInfo csInfo = new CSInfo(req.srcLat, req.srcLon, req.crowded, req.stuffy);
+		Linija targetLinija = owner.getGradskeLinije().linije[req.linija];
+		
+		if(targetLinija != null)
+			targetLinija.addCSInfo(csInfo);
+		
+	}
+	
 	//kasnjenje linije u sekundama, za cvor c, u odredjeno vreme, za liniju l
 	@SuppressWarnings("deprecation")
-	private long izracunajKasnjenjeLinije2(Linija l, Cvor c/*, double brzinaAutobusa*/)
+	private long izracunajKasnjenjeLinije2(Linija l, Cvor c)
 	{
 		LocalDateTime targetDateTime = LocalDateTime.now();
 		Date realLifeDate = new Date();
