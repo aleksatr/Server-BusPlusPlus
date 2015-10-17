@@ -1318,7 +1318,7 @@ public class RequestHandler
                 int j = 0;
                 while ((j < 60) && (l.matNedelja[i][j] != -1))
                 {
-                    if(minute <= l.matNedelja[i][j] && minute <= now.get(Calendar.HOUR_OF_DAY))
+                    if(minute <= l.matNedelja[i][j] && minute <= now.get(Calendar.MINUTE))
                     {
                     	CSInfo newCSI = null;
                     	if(l.cSourcedData[i][j] != null)
@@ -1342,7 +1342,7 @@ public class RequestHandler
                 int j = 0;
                 while ((j < 60) && (l.matSubota[i][j] != -1))
                 {
-                    if (minute <= l.matSubota[i][j] && minute <= now.get(Calendar.HOUR_OF_DAY))
+                    if (minute <= l.matSubota[i][j] && minute <= now.get(Calendar.MINUTE))
                     {
                     	CSInfo newCSI = null;
                     	if(l.cSourcedData[i][j] != null)
@@ -1364,7 +1364,7 @@ public class RequestHandler
                 int j = 0;
                 while ((j < 60) && (l.matNedelja[i][j] != -1))
                 {
-                    if (minute <= l.matNedelja[i][j] && minute <= now.get(Calendar.HOUR_OF_DAY))
+                    if (minute <= l.matNedelja[i][j] && minute <= now.get(Calendar.MINUTE))
                     {
                     	CSInfo newCSI = null;
                     	if(l.cSourcedData[i][j] != null)
@@ -1385,7 +1385,7 @@ public class RequestHandler
                 int j = 0;
                 while ((j < 60) && (l.matRadni[i][j] != -1))
                 {
-                    if (minute <= l.matRadni[i][j] && minute <= now.get(Calendar.HOUR_OF_DAY))
+                    if (minute <= l.matRadni[i][j] && minute <= now.get(Calendar.MINUTE))
                     {
                     	CSInfo newCSI = null;
                     	if(l.cSourcedData[i][j] != null)
@@ -1407,7 +1407,7 @@ public class RequestHandler
                 int j = 0;
                 while ((j < 60) && (l.matSubota[i][j] != -1))
                 {
-                    if (minute <= l.matSubota[i][j] && minute <= now.get(Calendar.HOUR_OF_DAY))
+                    if (minute <= l.matSubota[i][j] && minute <= now.get(Calendar.MINUTE))
                     {
                     	CSInfo newCSI = null;
                     	if(l.cSourcedData[i][j] != null)
@@ -1429,7 +1429,7 @@ public class RequestHandler
                 int j = 0;
                 while ((j < 60) && (l.matRadni[i][j] != -1))
                 {
-                    if (minute <= l.matRadni[i][j] && minute <= now.get(Calendar.HOUR_OF_DAY))
+                    if (minute <= l.matRadni[i][j] && minute <= now.get(Calendar.MINUTE))
                     {
                     	CSInfo newCSI = null;
                     	if(l.cSourcedData[i][j] != null)

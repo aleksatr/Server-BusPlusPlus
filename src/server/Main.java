@@ -22,6 +22,7 @@ public class Main
 	//private static Graf grafPrototype;
 	private static LinkedBlockingQueue<Socket> requestsQueue = new LinkedBlockingQueue<>(ServerConsts.REQUEST_QUEUE_SIZE);
 	private static ArrayList<Thread> threadPool = new ArrayList<>();
+	public static ArrayList<ClientWorker> workerPool = new ArrayList<>();
 	//private static Graf grafPool[] = new Graf[ServerConsts.WORKER_THREAD_POOL_SIZE];
 	private static ArrayList<CoordTimestamp> kontrole = new ArrayList<>();
 	
@@ -35,6 +36,7 @@ public class Main
 			workerThread = new ClientWorker(i, requestsQueue);
 			t = new Thread(workerThread);
 			threadPool.add(t);
+			workerPool.add(workerThread);
 			t.start();
 		}
 	}
@@ -152,7 +154,7 @@ public class Main
 		
 		for(CoordTimestamp ct : zaBrisanje)
 		{
-			System.out.println("Dodata kontrola " + ct.lat + "  " + ct.lon + "  " + ct.timestamp);
+			System.out.println("Obrisana kontrola " + ct.lat + "  " + ct.lon + "  " + ct.timestamp);
 			Main.kontrole.remove(ct);
 		}
 	
@@ -163,9 +165,29 @@ public class Main
 	public static synchronized ArrayList<CoordTimestamp> vratiKopijuKontrola()
 	{
 		ArrayList<CoordTimestamp> kopija = new ArrayList<>();
+		ArrayList<CoordTimestamp> zaBrisanje = new ArrayList<>();
+		LocalDateTime trenutnoVreme = LocalDateTime.now();
+		
+		long trenutnoSeconds = trenutnoVreme.atZone(ZoneId.systemDefault()).toEpochSecond();
+		long stariSeconds;
 		
 		for(CoordTimestamp ct : Main.kontrole)
-			kopija.add(new CoordTimestamp(ct));
+		{
+			stariSeconds = ct.timestamp.atZone(ZoneId.systemDefault()).toEpochSecond();
+			if(trenutnoSeconds - stariSeconds > ServerConsts.vremeVazenjaKontrole)
+				zaBrisanje.add(ct);
+			else
+				kopija.add(new CoordTimestamp(ct));
+		}
+		
+		for(CoordTimestamp ct : zaBrisanje)
+		{
+			System.out.println("Obrisana kontrola " + ct.lat + "  " + ct.lon + "  " + ct.timestamp);
+			Main.kontrole.remove(ct);
+		}
+		
+		/*for(CoordTimestamp ct : Main.kontrole)
+			kopija.add(new CoordTimestamp(ct));*/
 		
 		return kopija;
 	}

@@ -1,5 +1,6 @@
 package strukture;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 
@@ -21,34 +22,37 @@ public class Linija
 	public transient int matNedelja[][] = null;
 	
 	//
+	//private static transient Object cSourcedDataLock = new Object();
+	//private static transient Object raspodelaBrzinaLock = new Object();
+	
 	public transient CSInfo cSourcedData[][] = null;
 	
 	private transient double raspodelaBrzina[] =	{ 
-														8.3,	//00-01
-														8.3,	//01-02
-														8.0,	//02-03
-														7.0,	//03-04
-														6.5,	//04-05
-														5.4,	//05-06
-														5.0,	//06-07
-														4.5,	//07-08
-														4.15,	//08-09
-														5.0,	//09-10
-														5.4,	//10-11
-														6.0,	//11-12
-														6.0,	//12-13
-														5.4,	//13-14
-														4.5,	//14-15
-														4.15,	//15-16
-														5.0,	//16-17
-														5.4,	//17-18
-														6.0,	//18-19
-														6.0,	//19-20
-														7.0,	//20-21
-														7.5,	//21-22
-														8.0,	//22-23
-														8.3		//23-24
-													};
+															8.3,	//00-01
+															8.3,	//01-02
+															8.0,	//02-03
+															7.0,	//03-04
+															6.5,	//04-05
+															5.4,	//05-06
+															5.0,	//06-07
+															4.5,	//07-08
+															4.15,	//08-09
+															5.0,	//09-10
+															5.4,	//10-11
+															6.0,	//11-12
+															6.0,	//12-13
+															5.4,	//13-14
+															4.5,	//14-15
+															4.15,	//15-16
+															5.0,	//16-17
+															5.4,	//17-18
+															6.0,	//18-19
+															6.0,	//19-20
+															7.0,	//20-21
+															7.5,	//21-22
+															8.0,	//22-23
+															8.3		//23-24
+														};
 	
 	//za min walk prioritet linije (heuristka najblize stanice na liniji)
 	public transient double prioritet = Double.MAX_VALUE;
@@ -169,6 +173,32 @@ public class Linija
 		raspodelaBrzina[currentTime.getHour()] = raspodelaBrzina[currentTime.getHour()]*0.5 + speed*0.5;
 		
 		System.out.println("CS brzina za liniju " + broj + smer + " u " + currentTime.getHour() + "h prepravljena na " + raspodelaBrzina[currentTime.getHour()]);
+	}
+	
+	public synchronized void dodajCSInfo(CSInfo csInfo, DayOfWeek day, int hourIndex, int minuteIndex)
+	{
+		int mat[][] = null;
+		
+		if(day == DayOfWeek.SATURDAY)
+			mat = this.matSubota;
+		else if(day == DayOfWeek.SUNDAY)
+			mat = this.matNedelja;
+		else
+			mat = this.matRadni;
+		
+		if(this.cSourcedData[hourIndex][minuteIndex] == null)
+		{
+			System.out.println("Kreiran csInfo za liniju " + this.broj + this.smer +
+					", za bus u " + hourIndex + ":" + mat[hourIndex][minuteIndex]);
+			//this.cSourcedData[hourIndex][minuteIndex] = csInfo;
+			this.cSourcedData[hourIndex][minuteIndex] = new CSInfo(csInfo.lat, csInfo.lon, csInfo.crowded, csInfo.stuffy, csInfo.brojLinije, csInfo.smerLinije, csInfo.stanica, csInfo.udaljenost, csInfo.message, csInfo.kontrola);
+		}
+		else
+		{
+			System.out.println("Dodat csInfo za liniju " + this.broj + this.smer +
+					", za bus u " + hourIndex + ":" + mat[hourIndex][minuteIndex]);
+			this.cSourcedData[hourIndex][minuteIndex].usrednji(csInfo);
+		}
 	}
 
 	@Override

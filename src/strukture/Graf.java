@@ -14,13 +14,16 @@ public class Graf
 {
 	private ArrayList<Cvor> cvorovi = new ArrayList<>();
 	private GradskeLinije gl;
+	private ClientWorker owningWorker;
 	
 	public Graf() {}
 	
-	public Graf(String grafDBName, String redVoznjeDBName) throws ClassNotFoundException, SQLException, Exception
+	public Graf(ClientWorker owningWorker, String grafDBName, String redVoznjeDBName) throws ClassNotFoundException, SQLException, Exception
 	{
 		int maxId = 0;
 		Cvor tempArray[] = null;
+		
+		this.owningWorker = owningWorker;
 		
 		gl = new GradskeLinije(grafDBName, redVoznjeDBName, this);
 		
@@ -108,6 +111,11 @@ public class Graf
 	public ArrayList<Cvor> getStanice()
 	{
 		return this.cvorovi;
+	}
+	
+	public ClientWorker getOwningWorker()
+	{
+		return this.owningWorker;
 	}
 	
 	//obilazak po sirini

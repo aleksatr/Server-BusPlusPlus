@@ -32,7 +32,7 @@ public class ClientWorker implements Runnable
 		log.write("Thread[" + id + "]~" + " STARTED");
 		try
 		{
-			graf = new Graf(ServerConsts.SQLITE_GRAF_DB_NAME, ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
+			graf = new Graf(this, ServerConsts.SQLITE_GRAF_DB_NAME, ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
 		} catch(SQLException e)
 		{
 			// if the error message is "out of memory", 

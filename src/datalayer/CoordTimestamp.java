@@ -2,6 +2,9 @@ package datalayer;
 
 import java.time.LocalDateTime;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 public class CoordTimestamp
 {
 	public int cas;
@@ -24,6 +27,7 @@ public class CoordTimestamp
 	{
 		this.lat = lat;
 		this.lon = lon;
+		this.timestamp = null;
 		this.cas = cas;
 		this.minut = minut;
 	}
@@ -35,5 +39,13 @@ public class CoordTimestamp
 		this.timestamp = null;
 		this.cas = ct.cas;
 		this.minut = ct.minut;
+	}
+	
+	@Override
+	public String toString()
+	{
+		Gson gson = new GsonBuilder().create();
+		
+		return gson.toJson(this);
 	}
 }

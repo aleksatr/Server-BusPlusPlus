@@ -156,8 +156,9 @@ public class GradskeLinije
 		double targetDistance = 0.0;
 		boolean minusPredznak = false;
 		int hourIndex = 0, minuteIndex = 0;
-		DayOfWeek day;
+		DayOfWeek day = LocalDateTime.now().getDayOfWeek();
 		Linija targetLinija = null;
+		int targetMat[][] = null;
 		
 		for(Linija l : linijeZaProveru)
 		{
@@ -204,6 +205,7 @@ public class GradskeLinije
 					if(minRazlika > razlika)
 					{
 						targetDistance = distance;
+						targetMat = mat;
 						minusPredznak = true;
 						minRazlika = razlika;
 						hourIndex = h;
@@ -226,6 +228,7 @@ public class GradskeLinije
 					if(minRazlika > razlika)
 					{
 						targetDistance = distance;
+						targetMat = mat;
 						minusPredznak = true;
 						minRazlika = razlika;
 						hourIndex = h;
@@ -251,6 +254,7 @@ public class GradskeLinije
 					if(minRazlika > razlika)
 					{
 						targetDistance = distance;
+						targetMat = mat;
 						minusPredznak = false;
 						minRazlika = razlika;
 						hourIndex = h;
@@ -273,6 +277,7 @@ public class GradskeLinije
 					if(minRazlika > razlika)
 					{
 						targetDistance = distance;
+						targetMat = mat;
 						minusPredznak = false;
 						minRazlika = razlika;
 						hourIndex = h;
@@ -287,10 +292,20 @@ public class GradskeLinije
 		
 		if(targetLinija != null)
 		{
-			if(targetLinija.cSourcedData[hourIndex][minuteIndex] == null)
+			/*if(targetLinija.cSourcedData[hourIndex][minuteIndex] == null)
+			{
+				System.out.println("Kreiran csInfo za liniju " + targetLinija.broj + targetLinija.smer +
+						", za bus u " + hourIndex + ":" + targetMat[hourIndex][minuteIndex]);
 				targetLinija.cSourcedData[hourIndex][minuteIndex] = csInfo;
+			}
 			else
+			{
+				System.out.println("Dodat csInfo za liniju " + targetLinija.broj + targetLinija.smer +
+						", za bus u " + hourIndex + ":" + targetMat[hourIndex][minuteIndex]);
 				targetLinija.cSourcedData[hourIndex][minuteIndex].usrednji(csInfo);
+			}*/
+			//dodaj za svaku nit!!!
+			//targetLinija.dodajCSInfo(csInfo, day, hourIndex, minuteIndex);
 			
 			double proputovanoVreme = targetDistance / targetLinija.vratiTrenutnuBrzinu();
 			
@@ -300,7 +315,13 @@ public class GradskeLinije
 				proputovanoVreme += minRazlika;
 			
 			double speed = targetDistance / proputovanoVreme;
-			targetLinija.dodajBrzinu(speed);
+			
+			for(ClientWorker worker : Main.workerPool)
+			{
+				worker.getGradskeLinije().linije[targetLinija.id].dodajCSInfo(csInfo, day, hourIndex, minuteIndex);
+				worker.getGradskeLinije().linije[targetLinija.id].dodajBrzinu(speed);
+			}
+			//targetLinija.dodajBrzinu(speed);
 			
 			if(csInfo.kontrola)
 				Main.dodajKontrolu(new CoordTimestamp(csInfo.lat, csInfo.lon));
