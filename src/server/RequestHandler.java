@@ -115,6 +115,9 @@ public class RequestHandler
 			case 10:
 				handleRequest10(req);										//crowd sensing
 				break;
+			case 11:
+				handleRequest11(req);										//kontrola
+				break;
 			default:
 				log.write("Thread["+ owner.getId() + "] " +"Nepoznat request type = " + req.type);
 				break;
@@ -1053,7 +1056,13 @@ public class RequestHandler
 	//zahtevaju se informacije o polozaju kontrole
 	private void handleRequest11(Request req)
 	{
+		String responseStr = (new Response(req.type, null, null, null, null, null, null, null, Main.vratiKopijuKontrola())).toString();
 		
+		log.write("Thread [" + owner.getId() + "] client=" + clientSocket.getInetAddress().toString()+ " RESPONSE= " + responseStr);
+		
+		out.write(responseStr + "\n");
+
+		out.flush();
 	}
 	
 	//kasnjenje linije u sekundama, za cvor c, u odredjeno vreme, za liniju l
