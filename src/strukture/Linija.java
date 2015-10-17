@@ -1,5 +1,6 @@
 package strukture;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 
 import com.google.gson.Gson;
@@ -48,6 +49,7 @@ public class Linija
 														8.0,	//22-23
 														8.3		//23-24
 													};
+	
 	//za min walk prioritet linije (heuristka najblize stanice na liniji)
 	public transient double prioritet = Double.MAX_VALUE;
 	
@@ -64,11 +66,6 @@ public class Linija
 		this.matSubota = matSubota;
 		this.matNedelja = matNedelja;
 		this.cSourcedData = new CSInfo[25][60];
-	}
-	
-	public void addCSInfo(CSInfo csInfo)
-	{
-		
 	}
 	
 	public void stampajRedVoznje()
@@ -156,6 +153,22 @@ public class Linija
 		}
 		
 		return distance;
+	}
+	
+	public double vratiTrenutnuBrzinu()
+	{
+		LocalDateTime currentTime = LocalDateTime.now();
+		
+		return raspodelaBrzina[currentTime.getHour()];
+	}
+	
+	public void dodajBrzinu(double speed)
+	{
+		LocalDateTime currentTime = LocalDateTime.now();
+		
+		raspodelaBrzina[currentTime.getHour()] = raspodelaBrzina[currentTime.getHour()]*0.5 + speed*0.5;
+		
+		System.out.println("CS brzina za liniju " + broj + smer + " u " + currentTime.getHour() + "h prepravljena na " + raspodelaBrzina[currentTime.getHour()]);
 	}
 
 	@Override

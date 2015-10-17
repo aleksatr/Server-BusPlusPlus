@@ -22,7 +22,7 @@ public class Graf
 		int maxId = 0;
 		Cvor tempArray[] = null;
 		
-		gl = new GradskeLinije(grafDBName, redVoznjeDBName);
+		gl = new GradskeLinije(grafDBName, redVoznjeDBName, this);
 		
 		// load the sqlite-JDBC driver using the current class loader
 	    Class.forName("org.sqlite.JDBC");

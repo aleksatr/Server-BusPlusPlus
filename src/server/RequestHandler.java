@@ -1031,15 +1031,15 @@ public class RequestHandler
 	//crowd sensing
 	private void handleRequest10(Request req)
 	{
-		Linija targetLinija = owner.getGradskeLinije().linije[req.linija];
+		/*Linija targetLinija = owner.getGradskeLinije().linije[req.linija];
 		
 		if(targetLinija != null)
 		{
 			CSInfo csInfo = new CSInfo(req.srcLat, req.srcLon, req.crowded, req.stuffy, 
 										targetLinija.broj.replace("*", ""), targetLinija.broj, req.message);
 			owner.getGradskeLinije().addCSInfo(csInfo);
-		}
-		
+		}*/
+		owner.getGradskeLinije().addCSInfo(req.crowdSensing);
 	}
 	
 	//kasnjenje linije u sekundama, za cvor c, u odredjeno vreme, za liniju l
@@ -1255,7 +1255,7 @@ public class RequestHandler
 		if(linija == null)
 			return ServerConsts.brzinaPesaka;
 		else
-			return ServerConsts.brzinaAutobusa;
+			return linija.vratiTrenutnuBrzinu();
 	}
 	
 	//predjeni put do stanice stanica, linijom linija [vreme!?!?]

@@ -5,23 +5,32 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.DayOfWeek;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
+import datalayer.CSInfo;
+import datalayer.CoordTimestamp;
 import server.*;
 
 public class GradskeLinije
 {
 	//public ArrayList<Linija> linije = new ArrayList<>();
 	public Linija linije[];		//id linija u bazi odgovara indeksu u ovom nizu
+	private Graf graf;
+	
 	
 	public GradskeLinije(int size) 
 	{
 		linije = new Linija[size];
 	}
 			
-	public GradskeLinije(String grafDBName, String redVoznjeDBName) throws ClassNotFoundException, SQLException, Exception
+	public GradskeLinije(String grafDBName, String redVoznjeDBName, Graf graf) throws ClassNotFoundException, SQLException, Exception
 	{
 		int maxId = 0;
+		
+		this.graf = graf;
 		// load the sqlite-JDBC driver using the current class loader
 	    Class.forName("org.sqlite.JDBC");
 	    
@@ -133,4 +142,170 @@ public class GradskeLinije
 	    }
 	}
 
+
+	public void addCSInfo(CSInfo csInfo)
+	{
+		ArrayList<Linija> linijeZaProveru = new ArrayList<>();
+		LocalDateTime currentTime = LocalDateTime.now();
+		
+		for(Linija l : linije)
+			if(l != null && csInfo.brojLinije.equalsIgnoreCase(l.broj.replace("*", "")) && csInfo.smerLinije.equalsIgnoreCase(l.smer))
+				linijeZaProveru.add(l);
+		
+		int minRazlika = Integer.MAX_VALUE;
+		double targetDistance = 0.0;
+		boolean minusPredznak = false;
+		int hourIndex = 0, minuteIndex = 0;
+		DayOfWeek day;
+		Linija targetLinija = null;
+		
+		for(Linija l : linijeZaProveru)
+		{
+			double distance = l.calcDistance(l.pocetnaStanica, graf.vratiCvor(csInfo.stanica)) + csInfo.udaljenost;
+			//double brzina;
+			double proputovanoVreme = distance / l.vratiTrenutnuBrzinu();
+			
+			LocalDateTime targetDateTime = LocalDateTime.now();
+			LocalDateTime sourceDateTime;
+			Date realLifeDate = new Date();
+
+			long realLifeSeconds = realLifeDate.getTime() / 1000;
+			long sourceSeconds = realLifeSeconds - (int) proputovanoVreme;
+			
+			sourceDateTime = targetDateTime.minusDays(((int) proputovanoVreme)/86400);
+			sourceDateTime = sourceDateTime.minusHours((((int) proputovanoVreme)/3600)%24);
+			sourceDateTime = sourceDateTime.minusMinutes((((int) proputovanoVreme)/60)%60);
+			sourceDateTime = sourceDateTime.minusSeconds(((int) proputovanoVreme)%60);
+			
+			int mat[][] = null;
+			boolean found = false;
+			
+			if(sourceDateTime.getDayOfWeek() == DayOfWeek.SATURDAY)
+				mat = l.matSubota;
+			else if(sourceDateTime.getDayOfWeek() == DayOfWeek.SUNDAY)
+				mat = l.matNedelja;
+			else
+				mat = l.matRadni;
+			
+			//provera za bus koji je krenuo kasnije od ocenjenog vremena
+			//proveri trenutni cas prvo
+			int h = sourceDateTime.getHour();
+			for(int i = 0; i < 60 && mat[h][i] != -1; ++i)
+				if(mat[h][i] >= sourceDateTime.getMinute())
+				{
+					found = true;
+					int razlika;
+					
+					if(mat[h][i] == sourceDateTime.getMinute())
+						razlika = sourceDateTime.getSecond();
+					else
+						razlika = 60-sourceDateTime.getSecond() + (mat[h][i]-1-sourceDateTime.getMinute())*60;
+					
+					if(minRazlika > razlika)
+					{
+						targetDistance = distance;
+						minusPredznak = true;
+						minRazlika = razlika;
+						hourIndex = h;
+						minuteIndex = i;
+						day = sourceDateTime.getDayOfWeek();
+						targetLinija = l;
+					}
+					break;
+				}
+			
+			if(!found)
+			{
+				++h;
+				for(int i = 0; i < 60 && mat[h][i] != -1; ++i)
+				{
+					found = true;
+					int razlika = 60-sourceDateTime.getSecond() + (59-sourceDateTime.getMinute())*60
+									+ mat[h][i]*60;
+						
+					if(minRazlika > razlika)
+					{
+						targetDistance = distance;
+						minusPredznak = true;
+						minRazlika = razlika;
+						hourIndex = h;
+						minuteIndex = i;
+						day = sourceDateTime.getDayOfWeek();
+						targetLinija = l;
+					}
+					
+					break;
+				}
+			}
+			
+			//provera za bus koji je krenuo ranije od ocenjenog vremena
+			h = sourceDateTime.getHour();
+			found = false;
+			for(int i = 0; i < 60 && mat[h][i] != -1; ++i)
+				if(mat[h][i] < sourceDateTime.getMinute())
+				{
+					found = true;
+					int razlika = 60*(sourceDateTime.getMinute() - mat[h][i]) + sourceDateTime.getSecond();
+					
+					
+					if(minRazlika > razlika)
+					{
+						targetDistance = distance;
+						minusPredznak = false;
+						minRazlika = razlika;
+						hourIndex = h;
+						minuteIndex = i;
+						day = sourceDateTime.getDayOfWeek();
+						targetLinija = l;
+					}
+
+				}
+			
+			if(!found && h >= 1)
+			{
+				--h;
+				for(int i = 0; i < 60 && mat[h][i] != -1; ++i)
+				{
+					found = true;
+					int razlika = 60*sourceDateTime.getMinute() + sourceDateTime.getSecond()
+									+ 60*(60-mat[h][i]);
+						
+					if(minRazlika > razlika)
+					{
+						targetDistance = distance;
+						minusPredznak = false;
+						minRazlika = razlika;
+						hourIndex = h;
+						minuteIndex = i;
+						day = sourceDateTime.getDayOfWeek();
+						targetLinija = l;
+					}
+					
+				}
+			}
+		}
+		
+		if(targetLinija != null)
+		{
+			if(targetLinija.cSourcedData[hourIndex][minuteIndex] == null)
+				targetLinija.cSourcedData[hourIndex][minuteIndex] = csInfo;
+			else
+				targetLinija.cSourcedData[hourIndex][minuteIndex].usrednji(csInfo);
+			
+			double proputovanoVreme = targetDistance / targetLinija.vratiTrenutnuBrzinu();
+			
+			if(minusPredznak)
+				proputovanoVreme -= minRazlika;
+			else
+				proputovanoVreme += minRazlika;
+			
+			double speed = targetDistance / proputovanoVreme;
+			targetLinija.dodajBrzinu(speed);
+			
+			if(csInfo.kontrola)
+				Main.dodajKontrolu(new CoordTimestamp(csInfo.lat, csInfo.lon));
+		}
+		
+	}
+	
 }

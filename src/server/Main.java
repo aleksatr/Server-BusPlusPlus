@@ -2,6 +2,8 @@ package server;
 
 import java.io.*;
 import java.net.*;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.sql.Connection;
@@ -12,6 +14,7 @@ import java.sql.Statement;
 
 import com.google.gson.*;
 
+import datalayer.CoordTimestamp;
 import strukture.*;
 
 public class Main
@@ -20,6 +23,7 @@ public class Main
 	private static LinkedBlockingQueue<Socket> requestsQueue = new LinkedBlockingQueue<>(ServerConsts.REQUEST_QUEUE_SIZE);
 	private static ArrayList<Thread> threadPool = new ArrayList<>();
 	//private static Graf grafPool[] = new Graf[ServerConsts.WORKER_THREAD_POOL_SIZE];
+	private static ArrayList<CoordTimestamp> kontrole = new ArrayList<>();
 	
 	private static void populateThreadPool()
 	{
@@ -129,6 +133,27 @@ public class Main
 			}
 		}
 		
+	}
+	
+	public static synchronized void dodajKontrolu(CoordTimestamp kontrola)
+	{
+		ArrayList<CoordTimestamp> zaBrisanje = new ArrayList<>();
+		LocalDateTime trenutnoVreme = LocalDateTime.now();
+		
+		long trenutnoSeconds = trenutnoVreme.atZone(ZoneId.systemDefault()).toEpochSecond();
+		long stariSeconds;
+		
+		for(CoordTimestamp ct : Main.kontrole)
+		{
+			stariSeconds = ct.timestamp.atZone(ZoneId.systemDefault()).toEpochSecond();
+			if(trenutnoSeconds - stariSeconds > ServerConsts.vremeVazenjaKontrole)
+				zaBrisanje.add(ct);
+		}
+		
+		for(CoordTimestamp ct : zaBrisanje)
+			Main.kontrole.remove(ct);
+	
+		Main.kontrole.add(kontrola);
 	}
 
 }
