@@ -14,11 +14,12 @@ public class DatumVremeStanica
 	public int dan = 0;
 	public int mesec = 0;
 	public int godina = 0;
+	public CSInfo crowdInfo = null;
 	
 	public DatumVremeStanica() {}
 
 	public DatumVremeStanica(Integer stanica, Integer linija, int sekund, int minut, int sat, int dan,
-			int mesec, int godina)
+			int mesec, int godina, CSInfo crowdInfo)
 	{
 		this.stanica = stanica;
 		this.linija = linija;
@@ -28,6 +29,7 @@ public class DatumVremeStanica
 		this.dan = dan;
 		this.mesec = mesec;
 		this.godina = godina;
+		this.crowdInfo = crowdInfo;
 	}
 	
 	@Override

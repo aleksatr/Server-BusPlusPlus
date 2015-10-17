@@ -151,9 +151,23 @@ public class Main
 		}
 		
 		for(CoordTimestamp ct : zaBrisanje)
+		{
+			System.out.println("Dodata kontrola " + ct.lat + "  " + ct.lon + "  " + ct.timestamp);
 			Main.kontrole.remove(ct);
+		}
 	
 		Main.kontrole.add(kontrola);
+		System.out.println("Dodata kontrola " + kontrola.lat + "  " + kontrola.lon + "  " + kontrola.timestamp);
+	}
+	
+	public static synchronized ArrayList<CoordTimestamp> vratiKopijuKontrola()
+	{
+		ArrayList<CoordTimestamp> kopija = new ArrayList<>();
+		
+		for(CoordTimestamp ct : Main.kontrole)
+			kopija.add(new CoordTimestamp(ct));
+		
+		return kopija;
 	}
 
 }

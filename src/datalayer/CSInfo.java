@@ -7,17 +7,27 @@ import com.google.gson.GsonBuilder;
 
 public class CSInfo
 {
-	public double lat;
-	public double lon;
-	public double crowded;
-	public double stuffy;
-	public String brojLinije;
-	public String smerLinije;
+	public Double lat = null;
+	public Double lon = null;
+	public Double crowded = null;
+	public Double stuffy = null;
+	public String brojLinije = null;
+	public String smerLinije = null;
 	public Integer stanica = null;			//poslednja stanica za crowd sensing
 	public Integer udaljenost = null;		//udaljenost od poslednje stanice za crowd sensing
-	public String message;
-	public boolean kontrola;
+	public String message = null;
+	public Boolean kontrola = null;
 	
+	//public Integer linijaId = null;			//za klasican red voznje, da se oznaci na koju liniju se odnosi info
+	public Integer cas = null;
+	public Integer minut = null;
+	
+	public CSInfo(CSInfo cs)
+	{
+		this.crowded = cs.crowded;
+		this.stuffy = cs.stuffy;
+		this.message = cs.message;
+	}
 	
 	public CSInfo(double lat, double lon, double crowded, double stuffy, 
 			String brojLinije, String smerLinije, Integer stanica, Integer udaljenost, String message, boolean kontrola)

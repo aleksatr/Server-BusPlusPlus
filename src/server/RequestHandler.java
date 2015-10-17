@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedList;
 import java.time.DayOfWeek;
@@ -28,6 +29,8 @@ public class RequestHandler
 	private PrintWriter out = null;
 	private Request req = null;
 	private ClientWorker owner;
+	
+	private CSInfo tempInfo = null;
 	
 	private double matricaUdaljenosti[][] = null; 			//matricaUdaljenosti[startCvor.id][finishCvor.id] = udaljenost start-finish
 	
@@ -250,6 +253,7 @@ public class RequestHandler
 	private void handleRequest3(Request req)
 	{
 		Linija linije[] = owner.getGradskeLinije().linije;
+		ArrayList<CSInfo> targetCrowdInfo = new ArrayList<>();
 		//Graf g = owner.getGraf();
 		//ArrayList<Cvor> stanice = g.getStanice();
 		ArrayList<Linija> targetLinije = new ArrayList<>();
@@ -318,9 +322,12 @@ public class RequestHandler
 			staniceId[i] = minDistanceStanice[i].id;
 			
 			korekcije[i] = izracunajKorekciju(l, minDistanceStanice[i], predjeniPutBusaDoNajblizeStanice);
+			
+			//ubaci i crowd sensing
+			targetCrowdInfo.addAll(this.getCrowdInfo(l, korekcije[i]));
 		}
 		
-		String responseStr = (new Response(req.type, staniceId, linijeId, korekcije, null, null, null)).toString();
+		String responseStr = (new Response(req.type, staniceId, linijeId, korekcije, null, null, null, targetCrowdInfo)).toString();
 		log.write("Thread [" + owner.getId() + "] client=" +clientSocket.getInetAddress().toString()+ " RESPONSE= " + responseStr);
 		
 		out.write(responseStr + "\n");
@@ -578,6 +585,7 @@ public class RequestHandler
 		LocalDateTime tempTime = null;
 		
 		int linijeResenja[][] = new int[linije.length][5]; //start_stanica.id, end_stanica.id, cena_puta, vreme pesacenja do starta, kasnjenje linije na tu stanicu
+		CSInfo crowdInformations[] = new CSInfo[linije.length];
 		
 		for(int i = 0; i < linije.length; ++i)
 		{
@@ -630,7 +638,7 @@ public class RequestHandler
 					start.cenaPutanje = startnaUdaljenost/brzinaPesacenja;
 					
 					linijeResenja[i][4] = (int) izracunajKasnjenjeLinije2(linije[i], start/*, this.brzinaAutobusa(linije[i])*/);
-							
+					crowdInformations[i] = tempInfo;	
 					linijeResenja[i][2] += linijeResenja[i][4];
 				} else
 					linijeResenja[i][2] = Integer.MAX_VALUE;
@@ -665,7 +673,7 @@ public class RequestHandler
 				tempTime = tempTime.plusHours(((linijeResenja[i][3] + linijeResenja[i][4])/3600)%24);
 				tempTime = tempTime.plusMinutes(((linijeResenja[i][3] + linijeResenja[i][4])/60)%60);
 				tempTime = tempTime.plusSeconds((linijeResenja[i][3] + linijeResenja[i][4])%60);
-				DatumVremeStanica vremeDolaska = new DatumVremeStanica(linijeResenja[i][0], linije[i].id, tempTime.getSecond(), tempTime.getMinute(), tempTime.getHour(), tempTime.getDayOfWeek().getValue(), tempTime.getMonthValue(), tempTime.getYear());
+				DatumVremeStanica vremeDolaska = new DatumVremeStanica(linijeResenja[i][0], linije[i].id, tempTime.getSecond(), tempTime.getMinute(), tempTime.getHour(), tempTime.getDayOfWeek().getValue(), tempTime.getMonthValue(), tempTime.getYear(), crowdInformations[i]);
 				vremenaDolaska.add(vremeDolaska);
 			}
 		
@@ -804,7 +812,7 @@ public class RequestHandler
 							tempTime = tempTime.plusHours((((long)radniCvor.cenaPutanje + kasnjenje)/3600)%24);
 							tempTime = tempTime.plusMinutes((((long)radniCvor.cenaPutanje + kasnjenje)/60)%60);
 							tempTime = tempTime.plusSeconds(((long)radniCvor.cenaPutanje + kasnjenje)%60);
-							DatumVremeStanica vremeDolaska = new DatumVremeStanica(radniCvor.id, v.linija.id, tempTime.getSecond(), tempTime.getMinute(), tempTime.getHour(), tempTime.getDayOfWeek().getValue(), tempTime.getMonthValue(), tempTime.getYear());
+							DatumVremeStanica vremeDolaska = new DatumVremeStanica(radniCvor.id, v.linija.id, tempTime.getSecond(), tempTime.getMinute(), tempTime.getHour(), tempTime.getDayOfWeek().getValue(), tempTime.getMonthValue(), tempTime.getYear(), tempInfo);
 							tempCvor.vremeDolaskaAutobusaNaPrethodnuStanicu = vremeDolaska;
 						}
 						else
@@ -1042,6 +1050,12 @@ public class RequestHandler
 		owner.getGradskeLinije().addCSInfo(req.crowdSensing);
 	}
 	
+	//zahtevaju se informacije o polozaju kontrole
+	private void handleRequest11(Request req)
+	{
+		
+	}
+	
 	//kasnjenje linije u sekundama, za cvor c, u odredjeno vreme, za liniju l
 	@SuppressWarnings("deprecation")
 	private long izracunajKasnjenjeLinije2(Linija l, Cvor c)
@@ -1091,6 +1105,11 @@ public class RequestHandler
 					found = true;
 					targetSeconds += mat[h][i]*60;
 					targetDateTime = targetDateTime.plusMinutes(mat[h][i]);
+					
+					if(l.cSourcedData[h][i] != null)
+						tempInfo = new CSInfo(l.cSourcedData[h][i]);
+					else
+						tempInfo = null;
 				}
 			}
 			else
@@ -1256,6 +1275,169 @@ public class RequestHandler
 			return ServerConsts.brzinaPesaka;
 		else
 			return linija.vratiTrenutnuBrzinu();
+	}
+	
+	public ArrayList<CSInfo> getCrowdInfo(Linija l, int korekcija)
+	{
+
+		Calendar now = Calendar.getInstance();
+		int day = now.get(Calendar.DAY_OF_WEEK);
+		int hour = now.get(Calendar.HOUR_OF_DAY);
+		int minute = now.get(Calendar.MINUTE);
+
+		ArrayList<CSInfo> cInfo = new ArrayList<>();
+		hour -= korekcija / 3600;
+		minute -= (korekcija % 3600) / 60;
+		
+		while(minute < 0)
+		{
+			hour--;
+			minute += 60;
+		}
+		
+		if(hour < 0)
+		{
+			hour += 24;
+			day--;
+		}
+
+		if(day == Calendar.SUNDAY)
+        {
+
+            for (int i = hour; i < 25 && i <= now.get(Calendar.HOUR_OF_DAY); i++)
+            {
+                int j = 0;
+                while ((j < 60) && (l.matNedelja[i][j] != -1))
+                {
+                    if(minute <= l.matNedelja[i][j] && minute <= now.get(Calendar.HOUR_OF_DAY))
+                    {
+                    	CSInfo newCSI = null;
+                    	if(l.cSourcedData[i][j] != null)
+                    	{
+                    		newCSI = new CSInfo(l.cSourcedData[i][j]);
+                    		newCSI.cas = i;
+                    		newCSI.minut = l.matNedelja[i][j];
+                    		cInfo.add(newCSI);
+                    	}
+                    }
+                        //vremena.add(i * 100 + l.matNedelja[i][j]);
+                    j++;
+                }
+
+                minute = -1;
+            }
+        }else if(day == Calendar.SATURDAY)
+        {
+            for (int i = hour; i < 25 && i <= now.get(Calendar.HOUR_OF_DAY); i++)
+            {
+                int j = 0;
+                while ((j < 60) && (l.matSubota[i][j] != -1))
+                {
+                    if (minute <= l.matSubota[i][j] && minute <= now.get(Calendar.HOUR_OF_DAY))
+                    {
+                    	CSInfo newCSI = null;
+                    	if(l.cSourcedData[i][j] != null)
+                    	{
+                    		newCSI = new CSInfo(l.cSourcedData[i][j]);
+                    		newCSI.cas = i;
+                    		newCSI.minut = l.matSubota[i][j];
+                    		cInfo.add(newCSI);
+                    	}
+                    }
+                    j++;
+                }
+
+                minute = -1;
+            }
+
+            for(int i = 0; i < 3 && i <= now.get(Calendar.HOUR_OF_DAY); i++)
+            {
+                int j = 0;
+                while ((j < 60) && (l.matNedelja[i][j] != -1))
+                {
+                    if (minute <= l.matNedelja[i][j] && minute <= now.get(Calendar.HOUR_OF_DAY))
+                    {
+                    	CSInfo newCSI = null;
+                    	if(l.cSourcedData[i][j] != null)
+                    	{
+                    		newCSI = new CSInfo(l.cSourcedData[i][j]);
+                    		newCSI.cas = i;
+                    		newCSI.minut = l.matNedelja[i][j];
+                    		cInfo.add(newCSI);
+                    	}
+                    }
+                    j++;
+                }
+            }
+        }else if(day == Calendar.FRIDAY)
+        {
+            for (int i = hour; i < 25 && i <= now.get(Calendar.HOUR_OF_DAY); i++)
+            {
+                int j = 0;
+                while ((j < 60) && (l.matRadni[i][j] != -1))
+                {
+                    if (minute <= l.matRadni[i][j] && minute <= now.get(Calendar.HOUR_OF_DAY))
+                    {
+                    	CSInfo newCSI = null;
+                    	if(l.cSourcedData[i][j] != null)
+                    	{
+                    		newCSI = new CSInfo(l.cSourcedData[i][j]);
+                    		newCSI.cas = i;
+                    		newCSI.minut = l.matRadni[i][j];
+                    		cInfo.add(newCSI);
+                    	}
+                    }
+                    j++;
+                }
+
+                minute = -1;
+            }
+
+            for(int i = 0; i < 3 && i <= now.get(Calendar.HOUR_OF_DAY); i++)
+            {
+                int j = 0;
+                while ((j < 60) && (l.matSubota[i][j] != -1))
+                {
+                    if (minute <= l.matSubota[i][j] && minute <= now.get(Calendar.HOUR_OF_DAY))
+                    {
+                    	CSInfo newCSI = null;
+                    	if(l.cSourcedData[i][j] != null)
+                    	{
+                    		newCSI = new CSInfo(l.cSourcedData[i][j]);
+                    		newCSI.cas = i;
+                    		newCSI.minut = l.matSubota[i][j];
+                    		cInfo.add(newCSI);
+                    	}
+                    }
+                    j++;
+                }
+            }
+        }
+        else
+        {
+            for (int i = hour; i < 25 && i <= now.get(Calendar.HOUR_OF_DAY); i++)
+            {
+                int j = 0;
+                while ((j < 60) && (l.matRadni[i][j] != -1))
+                {
+                    if (minute <= l.matRadni[i][j] && minute <= now.get(Calendar.HOUR_OF_DAY))
+                    {
+                    	CSInfo newCSI = null;
+                    	if(l.cSourcedData[i][j] != null)
+                    	{
+                    		newCSI = new CSInfo(l.cSourcedData[i][j]);
+                    		newCSI.cas = i;
+                    		newCSI.minut = l.matRadni[i][j];
+                    		cInfo.add(newCSI);
+                    	}
+                    }
+                    j++;
+                }
+
+                minute = -1;
+            }
+        }
+		return cInfo;
 	}
 	
 	//predjeni put do stanice stanica, linijom linija [vreme!?!?]

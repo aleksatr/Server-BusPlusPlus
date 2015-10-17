@@ -19,6 +19,8 @@ public class Response
 	public Integer size = null;									//velicina baze koja se salje klijentu //ili cena putovanja u naprednom redu voznje! cena putanje u A*
 	public Double dbVer = null;									//verzija baze koja se potencijalno salje klijentu, -1 ako se ne salje baza
 
+	public ArrayList<CSInfo> crowdInfo = null;
+	
 	public Response() {}
 	
 	public Response(Integer type, Integer[] stanice, Integer[] linije, Integer[] korekcije,
@@ -31,6 +33,20 @@ public class Response
 		this.vremenaDolaska = vremenaDolaska;
 		this.size = size;
 		this.dbVer = dbVer;
+		this.crowdInfo = null;
+	}
+	
+	public Response(Integer type, Integer[] stanice, Integer[] linije, Integer[] korekcije,
+			ArrayList<DatumVremeStanica> vremenaDolaska, Integer size, Double dbVer, ArrayList<CSInfo> crowdInfo)
+	{
+		this.type = type;
+		this.stanice = stanice;
+		this.linije = linije;
+		this.korekcije = korekcije;
+		this.vremenaDolaska = vremenaDolaska;
+		this.size = size;
+		this.dbVer = dbVer;
+		this.crowdInfo = crowdInfo;
 	}
 
 	@Override
