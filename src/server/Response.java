@@ -20,6 +20,7 @@ public class Response
 	public Double dbVer = null;									//verzija baze koja se potencijalno salje klijentu, -1 ako se ne salje baza
 
 	public ArrayList<CSInfo> crowdInfo = null;
+	public ArrayList<CoordTimestamp> kontrola = null;
 	
 	public Response() {}
 	
@@ -48,7 +49,21 @@ public class Response
 		this.dbVer = dbVer;
 		this.crowdInfo = crowdInfo;
 	}
-
+	
+	public Response(Integer type, Integer[] stanice, Integer[] linije, Integer[] korekcije,
+			ArrayList<DatumVremeStanica> vremenaDolaska, Integer size, Double dbVer, ArrayList<CSInfo> crowdInfo, ArrayList<CoordTimestamp> kontrola)
+	{
+		this.type = type;
+		this.stanice = stanice;
+		this.linije = linije;
+		this.korekcije = korekcije;
+		this.vremenaDolaska = vremenaDolaska;
+		this.size = size;
+		this.dbVer = dbVer;
+		this.crowdInfo = crowdInfo;
+		this.kontrola = kontrola;
+	}
+	
 	@Override
 	public String toString()
 	{
