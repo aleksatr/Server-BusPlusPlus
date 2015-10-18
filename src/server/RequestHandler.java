@@ -118,6 +118,12 @@ public class RequestHandler
 			case 11:
 				handleRequest11(req);										//kontrola
 				break;
+			case 100:
+				handleRequest100(req);										//test za CSInfo
+				break;
+			case 101:
+				handleRequest101(req);										//test za brzine
+				break;
 			default:
 				log.write("Thread["+ owner.getId() + "] " +"Nepoznat request type = " + req.type);
 				break;
@@ -1512,5 +1518,33 @@ public class RequestHandler
 	    c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
 	    return 6371000 * c;
+	}
+	
+	//test za CSInfo
+	public void handleRequest100(Request req)
+	{
+		String responseStr = "";
+		
+		Linija l = owner.getGradskeLinije().linije[req.linija];
+		
+		responseStr = l.stampajCSInfo();
+		
+		out.write(responseStr + "\n");
+
+		out.flush();
+	}
+	
+	//test za brzine
+	public void handleRequest101(Request req)
+	{
+		String responseStr = "";
+		
+		Linija l = owner.getGradskeLinije().linije[req.linija];
+		
+		responseStr = l.stampajRaspodeluBrzina();
+		
+		out.write(responseStr + "\n");
+
+		out.flush();
 	}
 }

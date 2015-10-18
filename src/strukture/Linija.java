@@ -52,7 +52,7 @@ public class Linija
 															7.5,	//21-22
 															8.0,	//22-23
 															8.3		//23-24
-														};
+													};
 	
 	//za min walk prioritet linije (heuristka najblize stanice na liniji)
 	public transient double prioritet = Double.MAX_VALUE;
@@ -166,13 +166,18 @@ public class Linija
 		return raspodelaBrzina[currentTime.getHour()];
 	}
 	
-	public void dodajBrzinu(double speed)
+	public synchronized void dodajBrzinu(double speed)
 	{
 		LocalDateTime currentTime = LocalDateTime.now();
+		int curHour = currentTime.getHour();
+		int curMin = currentTime.getMinute();
+		raspodelaBrzina[curHour] = raspodelaBrzina[curHour]*0.5 + speed*0.5;
 		
-		raspodelaBrzina[currentTime.getHour()] = raspodelaBrzina[currentTime.getHour()]*0.5 + speed*0.5;
+		if(curMin > 30 && curHour < 24)
+			raspodelaBrzina[curHour+1] = raspodelaBrzina[curHour+1]*0.75 + speed*0.25;
 		
-		System.out.println("CS brzina za liniju " + broj + smer + " u " + currentTime.getHour() + "h prepravljena na " + raspodelaBrzina[currentTime.getHour()]);
+		/*System.out.println("CS brzina za liniju " + broj + smer + " u " + curHour + "h prepravljena na " + 
+							raspodelaBrzina[curHour]);*/
 	}
 	
 	public synchronized void dodajCSInfo(CSInfo csInfo, DayOfWeek day, int hourIndex, int minuteIndex)
@@ -188,19 +193,49 @@ public class Linija
 		
 		if(this.cSourcedData[hourIndex][minuteIndex] == null)
 		{
-			System.out.println("Kreiran csInfo za liniju " + this.broj + this.smer +
-					", za bus u " + hourIndex + ":" + mat[hourIndex][minuteIndex]);
+			/*System.out.println("Kreiran csInfo za liniju " + this.broj + this.smer +
+					", za bus u " + hourIndex + ":" + mat[hourIndex][minuteIndex]);*/
 			//this.cSourcedData[hourIndex][minuteIndex] = csInfo;
 			this.cSourcedData[hourIndex][minuteIndex] = new CSInfo(csInfo.lat, csInfo.lon, csInfo.crowded, csInfo.stuffy, csInfo.brojLinije, csInfo.smerLinije, csInfo.stanica, csInfo.udaljenost, csInfo.message, csInfo.kontrola);
 		}
 		else
 		{
-			System.out.println("Dodat csInfo za liniju " + this.broj + this.smer +
-					", za bus u " + hourIndex + ":" + mat[hourIndex][minuteIndex]);
+			/*System.out.println("Dodat csInfo za liniju " + this.broj + this.smer +
+					", za bus u " + hourIndex + ":" + mat[hourIndex][minuteIndex]);*/
 			this.cSourcedData[hourIndex][minuteIndex].usrednji(csInfo);
 		}
 	}
-
+	
+	public String stampajRaspodeluBrzina()
+	{
+		String raspodela = "";
+		for(int i = 0; i < raspodelaBrzina.length; ++i)
+			raspodela += "[" + i +"]\t" + raspodelaBrzina[i] + "\n";
+		
+		return raspodela;
+	}
+	
+	public String stampajCSInfo()
+	{
+		String cInfo = "";
+		DayOfWeek day = LocalDateTime.now().getDayOfWeek();
+		int mat[][] = null;
+		
+		if(day == DayOfWeek.SATURDAY)
+			mat = this.matSubota;
+		else if(day == DayOfWeek.SUNDAY)
+			mat = this.matNedelja;
+		else
+			mat = this.matRadni;
+		
+		for(int i = 0; i < 25; ++i)
+			for(int j = 0; j < 60; ++j)
+				if(cSourcedData[i][j] != null)
+					cInfo += "Bus u " + i + ":" + mat[i][j] + " informacije : " + cSourcedData[i][j];
+		
+		return cInfo;
+	}
+	
 	@Override
 	public String toString()
 	{

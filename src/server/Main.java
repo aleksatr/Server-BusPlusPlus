@@ -154,12 +154,14 @@ public class Main
 		
 		for(CoordTimestamp ct : zaBrisanje)
 		{
-			System.out.println("Obrisana kontrola " + ct.lat + "  " + ct.lon + "  " + ct.timestamp);
+			//System.out.println("Obrisana kontrola " + ct.lat + "  " + ct.lon + "  " + ct.timestamp);
+			ServerLog.getInstance().write("Obrisana kontrola " + ct.lat + "  " + ct.lon + "  " + ct.timestamp);
 			Main.kontrole.remove(ct);
 		}
 	
 		Main.kontrole.add(kontrola);
-		System.out.println("Dodata kontrola " + kontrola.lat + "  " + kontrola.lon + "  " + kontrola.timestamp);
+		ServerLog.getInstance().write("Dodata kontrola " + kontrola.lat + "  " + kontrola.lon + "  " + kontrola.timestamp);
+		//System.out.println("Dodata kontrola " + kontrola.lat + "  " + kontrola.lon + "  " + kontrola.timestamp);
 	}
 	
 	public static synchronized ArrayList<CoordTimestamp> vratiKopijuKontrola()
@@ -182,7 +184,8 @@ public class Main
 		
 		for(CoordTimestamp ct : zaBrisanje)
 		{
-			System.out.println("Obrisana kontrola " + ct.lat + "  " + ct.lon + "  " + ct.timestamp);
+			ServerLog.getInstance().write("Obrisana kontrola " + ct.lat + "  " + ct.lon + "  " + ct.timestamp);
+			//System.out.println("Obrisana kontrola " + ct.lat + "  " + ct.lon + "  " + ct.timestamp);
 			Main.kontrole.remove(ct);
 		}
 		
