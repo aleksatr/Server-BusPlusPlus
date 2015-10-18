@@ -289,7 +289,9 @@ public class RequestHandler
 		
 		Integer linijeId[] = new Integer[targetLinije.size()];
 		Integer staniceId[] = new Integer[targetLinije.size()];
-		Integer korekcije[] = new Integer[targetLinije.size()];
+		//Integer korekcije[] = new Integer[targetLinije.size()];
+		ArrayList<Integer> targetKorekcije = new ArrayList<>();
+		int korekcija = 0;
 		
 		for(int i = 0; i < targetLinije.size(); ++i)
 		{
@@ -330,13 +332,18 @@ public class RequestHandler
 			
 			staniceId[i] = minDistanceStanice[i].id;
 			
-			korekcije[i] = izracunajKorekciju(l, minDistanceStanice[i], predjeniPutBusaDoNajblizeStanice);
+			korekcija = izracunajKorekciju(l, minDistanceStanice[i], predjeniPutBusaDoNajblizeStanice);
+			
+			for(int k = LocalDateTime.now().getHour(); k < 27; ++k)
+			{
+				targetKorekcije.add(izracunajKorekcijuZaCas(l, minDistanceStanice[i], predjeniPutBusaDoNajblizeStanice, k%24));
+			}
 			
 			//ubaci i crowd sensing
-			targetCrowdInfo.addAll(this.getCrowdInfo(l, korekcije[i]));
+			targetCrowdInfo.addAll(this.getCrowdInfo(l, korekcija));
 		}
 		
-		String responseStr = (new Response(req.type, staniceId, linijeId, korekcije, null, null, null, targetCrowdInfo)).toString();
+		String responseStr = (new Response(req.type, staniceId, linijeId, targetKorekcije.toArray(new Integer[targetKorekcije.size()]), null, null, null, targetCrowdInfo)).toString();
 		log.write("Thread [" + owner.getId() + "] client=" +clientSocket.getInetAddress().toString()+ " RESPONSE= " + responseStr);
 		
 		out.write(responseStr + "\n");
@@ -1292,6 +1299,14 @@ public class RequestHandler
 			return linija.vratiTrenutnuBrzinu();
 	}
 	
+	private double brzinaAutobusaZaCas(Linija linija, int cas)
+	{
+		if(linija == null)
+			return ServerConsts.brzinaPesaka;
+		else
+			return linija.vratiBrzinu(cas);
+	}
+	
 	public ArrayList<CSInfo> getCrowdInfo(Linija l, int korekcija)
 	{
 
@@ -1460,7 +1475,13 @@ public class RequestHandler
 	{
 		return (int) (predjeniPut/this.brzinaAutobusa(linija));
 	}
-
+	
+	//predjeni put do stanice stanica, linijom linija [vreme!?!?]
+	private int izracunajKorekcijuZaCas(Linija linija, Cvor stanica, int predjeniPut, int cas)
+	{
+		return (int) (predjeniPut/this.brzinaAutobusaZaCas(linija, cas));
+	}
+	
 	private int izracunajKorekciju(Linija linija, Cvor targetStanica)
 	{
 		int predjeniPut = 0;
