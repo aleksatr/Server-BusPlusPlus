@@ -110,7 +110,7 @@ public class RequestHandler
 				handleRequest6(req, ServerConsts.brzinaPesaka);			//rezim vremenske optimalnosti
 				break;
 			case 7:
-				handleRequest6(req, ServerConsts.brzinaPesaka);	//MIN WALK - rezim minimalnog pesacenja
+				handleRequest6(req, ServerConsts.brzinaPesaka/1.0);	//MIN WALK - rezim minimalnog pesacenja
 				break;
 			case 10:
 				handleRequest10(req);										//crowd sensing
@@ -879,6 +879,9 @@ public class RequestHandler
 			/*if(req.type == 7)
 				minWalkPostProcessing(pseudoStart, pseudoEnd);*/
 			
+			if(req.type == 6)
+				optimalPostProcessing(pseudoStart, pseudoEnd);
+			
 			Cvor c = pseudoEnd;
 			
 			Response response = new Response();
@@ -1267,10 +1270,26 @@ public class RequestHandler
 		
 	}
 
+	private void optimalPostProcessing(Cvor pseudoStart, Cvor pseudoEnd)
+	{
+		Cvor c = pseudoEnd;
+		ArrayList<Cvor> putanja = new ArrayList<>();
+
+		while(c != null)
+		{
+			putanja.add(0, c);
+			
+			c = c.prethodnaStanica;
+		}
+		
+		
+	}
+	
 	private void izracunajPrioriteteLinija(GradskeLinije gradskeLinije)
 	{
 		Veza v = null;
 		Cvor c = null;
+		double minPrioritet = Double.MAX_VALUE;
 		
 		for(Linija l : gradskeLinije.linije)
 			if(l != null)
@@ -1286,9 +1305,17 @@ public class RequestHandler
 						break;
 					
 					if(c.heuristika < l.prioritet)
+					{
 						l.prioritet = c.heuristika;
+						if(l.prioritet < minPrioritet)
+							minPrioritet = l.prioritet;
+					}
 				}
 			}
+		
+		for(Linija l : gradskeLinije.linije)
+			if(l != null)
+				l.prioritet /= minPrioritet;
 	}
 	
 	private double brzinaAutobusa(Linija linija)
