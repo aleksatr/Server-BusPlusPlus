@@ -879,8 +879,8 @@ public class RequestHandler
 			/*if(req.type == 7)
 				minWalkPostProcessing(pseudoStart, pseudoEnd);*/
 			
-			if(req.type == 6)
-				optimalPostProcessing(pseudoStart, pseudoEnd);
+			/*if(req.type == 6)
+				optimalPostProcessing(pseudoStart, pseudoEnd);*/
 			
 			Cvor c = pseudoEnd;
 			
@@ -1272,14 +1272,150 @@ public class RequestHandler
 
 	private void optimalPostProcessing(Cvor pseudoStart, Cvor pseudoEnd)
 	{
-		Cvor c = pseudoEnd;
-		ArrayList<Cvor> putanja = new ArrayList<>();
+		/*if(Main.brojka == 1)
+		{
+			Main.brojka = 0;
+			return;
+		}
+		else
+			Main.brojka++;*/
+		
+		Cvor najblizi = pseudoEnd.prethodnaStanica;
+		Cvor tempCvor;
+		Cvor noviStart = null;
+		Linija trenutnaLinija;
+		LocalDateTime currentTime = LocalDateTime.now();
+		LocalDateTime tempTime = null;
+		
+		//maksimiziranje duzine linije
+		while(najblizi != pseudoStart)
+		{
+			if(najblizi.linijom != null)
+			{
+				trenutnaLinija = najblizi.linijom;
+				tempCvor = najblizi;
+				while(tempCvor != pseudoStart)
+				{
+					if(tempCvor.vratiVezu(trenutnaLinija) != null)
+						noviStart = tempCvor;
+					tempCvor = tempCvor.prethodnaStanica;
+				}
+				
+				if(noviStart != najblizi)
+				{
+					najblizi.prethodnaStanica = noviStart;
+					najblizi = noviStart;
+				} else
+					najblizi = najblizi.prethodnaStanica;
+			} else
+				najblizi = najblizi.prethodnaStanica;
+		}
+		
+		//skracenje nepotrebnog pesacenja
+		najblizi = pseudoEnd.prethodnaStanica;
+		while(najblizi != pseudoStart)
+		{
+			if(najblizi.linijom != null)				//kraj puta linijom
+			{
+				tempCvor = najblizi.prethodnaStanica;	//pocetak puta narednom linijom
+				noviStart = tempCvor.prethodnaStanica;	//kraj puta prethodnom linijom
+				trenutnaLinija = najblizi.linijom;
+				if(tempCvor.linijom == null)
+				{
+					ArrayList<Cvor> staniceNaLiniji = trenutnaLinija.vratiStaniceNaLiniji();
+					double bestDistance = calcDistance(tempCvor, noviStart), d;
+					for(Cvor boljiTemp : staniceNaLiniji)
+						if((d = calcDistance(boljiTemp, noviStart.lat, noviStart.lon)) < bestDistance)
+						{
+							bestDistance = d;
+							tempCvor = boljiTemp;
+						}
+					
+					tempCvor.prethodnaStanica = noviStart;
+					tempCvor.linijom = null;
+					najblizi.prethodnaStanica = tempCvor;
+					najblizi = najblizi.prethodnaStanica;
+				}
+			} else
+				najblizi = najblizi.prethodnaStanica;
+		}
+		
+		//popunjavanje stanica na liniji, izmedju start i stop (umetanje stanica)
+		najblizi = pseudoEnd.prethodnaStanica;
+		while(najblizi != pseudoStart)
+		{
+			if(najblizi.linijom != null)
+			{
+				Cvor startStanica = najblizi.prethodnaStanica;
+				Cvor endStanica = najblizi;
+				int startIndex = 0, endIndex = 0;
+				//trenutnaLinija = najblizi.linijom;
+				ArrayList<Cvor> staniceNaLiniji = najblizi.linijom.vratiStaniceNaLiniji();
+				startIndex = staniceNaLiniji.indexOf(startStanica);
+				endIndex = staniceNaLiniji.indexOf(endStanica);
+				
+				for(int i = endIndex; i > startIndex; --i)
+				{
+					tempCvor = staniceNaLiniji.get(i);
+					tempCvor.prethodnaStanica = staniceNaLiniji.get(i-1);
+					tempCvor.linijom = najblizi.linijom;
+				}
+				
+				najblizi = startStanica.prethodnaStanica;
+			} else
+				najblizi = najblizi.prethodnaStanica;
+		}
+		
+		ArrayList<Cvor> finalPutanja = new ArrayList<>();
 
+		Cvor c = pseudoEnd;
 		while(c != null)
 		{
-			putanja.add(0, c);
+			finalPutanja.add(0, c);
 			
 			c = c.prethodnaStanica;
+		}
+		
+		trenutnaLinija = null;
+		double cenaPutanje = 0.0;
+		pseudoStart.cenaPutanje = 0.0;
+		Cvor trenutnaStanica;//, narednaStanica;
+		
+		//preracunavanje cene i vremena dolaska buseva
+		for(int i = 1; i < finalPutanja.size(); ++i)
+		{
+			//narednaStanica = finalPutanja.get(i + 1);
+			trenutnaStanica = finalPutanja.get(i);//narednaStanica.prethodnaStanica;
+			//trenutnaLinija = narednaStanica.linijom;
+			double brzinaAutobusa;
+			long kasnjenje;// 
+			
+			if(trenutnaStanica.linijom == null)
+			{
+				trenutnaStanica.cenaPutanje = trenutnaStanica.prethodnaStanica.cenaPutanje + calcDistance(trenutnaStanica.prethodnaStanica.lat, trenutnaStanica.prethodnaStanica.lon, trenutnaStanica.lat, trenutnaStanica.lon)/ServerConsts.brzinaPesaka;
+				trenutnaStanica.vremeDolaskaAutobusaNaPrethodnuStanicu = null;
+			}
+			else
+			{
+				brzinaAutobusa = this.brzinaAutobusa(trenutnaStanica.linijom); 
+				if(trenutnaStanica.prethodnaStanica.linijom == trenutnaStanica.linijom)
+				{
+					trenutnaStanica.cenaPutanje = trenutnaStanica.prethodnaStanica.cenaPutanje + trenutnaStanica.prethodnaStanica.vratiVezu(trenutnaStanica.linijom).weight/brzinaAutobusa;
+					trenutnaStanica.vremeDolaskaAutobusaNaPrethodnuStanicu = null;
+				} else
+				{
+					kasnjenje = izracunajKasnjenjeLinije2(trenutnaStanica.linijom, trenutnaStanica.prethodnaStanica);
+					trenutnaStanica.cenaPutanje = trenutnaStanica.prethodnaStanica.cenaPutanje + trenutnaStanica.prethodnaStanica.vratiVezu(trenutnaStanica.linijom).weight/brzinaAutobusa + kasnjenje;
+					
+					tempTime = currentTime.plusDays(((long)trenutnaStanica.prethodnaStanica.cenaPutanje + kasnjenje)/86400);
+					tempTime = tempTime.plusHours((((long)trenutnaStanica.prethodnaStanica.cenaPutanje + kasnjenje)/3600)%24);
+					tempTime = tempTime.plusMinutes((((long)trenutnaStanica.prethodnaStanica.cenaPutanje + kasnjenje)/60)%60);
+					tempTime = tempTime.plusSeconds(((long)trenutnaStanica.prethodnaStanica.cenaPutanje + kasnjenje)%60);
+					DatumVremeStanica vremeDolaska = new DatumVremeStanica(trenutnaStanica.prethodnaStanica.id, trenutnaStanica.linijom.id, tempTime.getSecond(), tempTime.getMinute(), tempTime.getHour(), tempTime.getDayOfWeek().getValue(), tempTime.getMonthValue(), tempTime.getYear(), tempInfo);
+					trenutnaStanica.vremeDolaskaAutobusaNaPrethodnuStanicu = vremeDolaska;
+				}
+			}
+			
 		}
 		
 		

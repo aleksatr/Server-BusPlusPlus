@@ -25,6 +25,7 @@ public class Main
 	public static ArrayList<ClientWorker> workerPool = new ArrayList<>();
 	//private static Graf grafPool[] = new Graf[ServerConsts.WORKER_THREAD_POOL_SIZE];
 	private static ArrayList<CoordTimestamp> kontrole = new ArrayList<>();
+	//public static int brojka = 0;
 	
 	private static void populateThreadPool()
 	{
@@ -57,6 +58,8 @@ public class Main
 		
 		FileReader dbVerInputStream = null;
 		BufferedReader dbVerBufferedInput = null;
+		
+		kreirajNitZaResetovanjeCSInfo();
 		
 		try
 		{
@@ -135,6 +138,41 @@ public class Main
 			}
 		}
 		
+	}
+	
+	private static void kreirajNitZaResetovanjeCSInfo()
+	{
+		new Thread() 
+		{
+            public void run() 
+            {
+            	LocalDateTime currTime = LocalDateTime.now();
+            	
+            	long sec = 60-currTime.getSecond() + 60*(59-currTime.getMinute()) + 3600*(23-currTime.getHour());
+            	
+            	//dodaj 3 sata 
+            	sec += 10800;
+            	
+            	try
+				{
+					Thread.sleep(sec*1000);
+					for(ClientWorker cw : workerPool)
+						cw.getGradskeLinije().resetCSInfo();
+					
+					while(true)
+					{
+						Thread.sleep(86400000);
+						for(ClientWorker cw : workerPool)
+							cw.getGradskeLinije().resetCSInfo();
+					}
+				} catch (InterruptedException e)
+				{
+					ServerLog.getInstance().write("Nit za resetovanje CSInfo je interruptovana dok je cekala");
+					ServerLog.getInstance().write(e.getMessage());
+				}
+            	
+            }
+       };
 	}
 	
 	public static synchronized void dodajKontrolu(CoordTimestamp kontrola)

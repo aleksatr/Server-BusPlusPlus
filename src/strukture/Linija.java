@@ -116,6 +116,13 @@ public class Linija
 		
 	}
 	
+	public synchronized void resetujCSInfo()
+	{
+		for(int i = 0; i < 25; ++i)
+			for(int j = 0; j < 60; ++j)
+				cSourcedData[i][j] = null;
+	}
+	
 	public ArrayList<Cvor> vratiStaniceNaLiniji()
 	{
 		ArrayList<Cvor> rezultat = new ArrayList<>();
@@ -129,10 +136,10 @@ public class Linija
 		{
 			c = v.destination;
 
-			rezultat.add(c);
-			
 			if(c == this.pocetnaStanica)
 				break;
+			
+			rezultat.add(c);
 		}
 		
 		return rezultat;

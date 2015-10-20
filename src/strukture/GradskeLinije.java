@@ -142,7 +142,14 @@ public class GradskeLinije
 	    }
 	}
 
-
+	
+	public void resetCSInfo()
+	{
+		for(Linija l : linije)
+			if(l != null)
+				l.resetujCSInfo();
+	}
+	
 	public void addCSInfo(CSInfo csInfo)
 	{
 		ArrayList<Linija> linijeZaProveru = new ArrayList<>();
