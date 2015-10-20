@@ -110,7 +110,7 @@ public class RequestHandler
 				handleRequest6(req, ServerConsts.brzinaPesaka);			//rezim vremenske optimalnosti
 				break;
 			case 7:
-				handleRequest6(req, ServerConsts.brzinaPesakaZaMinWalk);	//MIN WALK - rezim minimalnog pesacenja
+				handleRequest6(req, ServerConsts.brzinaPesaka);	//MIN WALK - rezim minimalnog pesacenja
 				break;
 			case 10:
 				handleRequest10(req);										//crowd sensing
@@ -876,8 +876,8 @@ public class RequestHandler
 		
 		if(nadjenPut)
 		{
-			if(req.type == 7)
-				minWalkPostProcessing(pseudoStart, pseudoEnd);
+			/*if(req.type == 7)
+				minWalkPostProcessing(pseudoStart, pseudoEnd);*/
 			
 			Cvor c = pseudoEnd;
 			
@@ -1266,7 +1266,7 @@ public class RequestHandler
 		//---------------------------obradjen pocetak puta
 		
 	}
-	
+
 	private void izracunajPrioriteteLinija(GradskeLinije gradskeLinije)
 	{
 		Veza v = null;
