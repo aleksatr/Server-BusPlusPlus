@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedList;
+import java.sql.SQLException;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 
@@ -88,6 +89,9 @@ public class RequestHandler
 			
 			switch(req.type)
 			{
+			case -1:
+				handleRequestMinus1(req);
+				break;
 			case 0:
 				handleRequest0(req);		//bpp.db
 				break;
@@ -113,10 +117,10 @@ public class RequestHandler
 				handleRequest6(req, ServerConsts.brzinaPesaka/1.0);	//MIN WALK - rezim minimalnog pesacenja
 				break;
 			case 10:
-				handleRequest10(req);										//crowd sensing
+				handleRequest10(req);										//crowd sensing od klijenta
 				break;
 			case 11:
-				handleRequest11(req);										//kontrola
+				handleRequest11(req);										//kontrola, klijent zahteva gde se nalazi kontrola
 				break;
 			case 100:
 				handleRequest100(req);										//test za CSInfo
@@ -1730,5 +1734,45 @@ public class RequestHandler
 		out.write(responseStr + "\n");
 
 		out.flush();
+	}
+	
+	//zahtev koji pokrece reinicijalizaciju servera (sve niti ponovo ucitavaju svoje strukture iz baza)
+	//password: dahaka
+	public void handleRequestMinus1(Request req)
+	{
+		if(req.passwd.equals(ServerConsts.passwordZaReinicijalizaciju))
+		{
+			for(ClientWorker cw : Main.workerPool)
+			{
+				try
+				{
+					cw.setGraf(new Graf(cw, ServerConsts.SQLITE_GRAF_DB_NAME, ServerConsts.SQLITE_RED_VOZNJE_DB_NAME));
+					log.write("Thread[" + cw.getId() + "]~" + " REINITIALIZED");
+				} catch(SQLException e)
+				{
+					// if the error message is "out of memory", 
+				    // it probably means no database file is found
+					log.write("Thread[" + cw.getId() + "]~" + " Exception caught when trying create grafPrototype from " + ServerConsts.SQLITE_GRAF_DB_NAME + " and " + ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
+					log.write(e.getMessage());
+					log.write("Bus++ thread[" + cw.getId() + "] terminated");
+					
+					return;
+				} catch(ClassNotFoundException e)
+				{
+					log.write("!Thread[" + cw.getId() + "]~" + " Exception caught when trying create grafPrototype from " + ServerConsts.SQLITE_GRAF_DB_NAME + " and " + ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
+					log.write(e + "");
+					log.write("!Bus++ thread[" + cw.getId() + "] terminated");
+					
+					return;
+				} catch(Exception e)
+				{
+					log.write("!!Thread[" + cw.getId() + "]~" + " Exception caught when trying create grafPrototype from " + ServerConsts.SQLITE_GRAF_DB_NAME + " and " + ServerConsts.SQLITE_RED_VOZNJE_DB_NAME);
+					log.write(e + "");
+					log.write("!!Bus++ thread[" + cw.getId() + "] terminated");
+					
+					return;
+				}
+			}
+		}
 	}
 }

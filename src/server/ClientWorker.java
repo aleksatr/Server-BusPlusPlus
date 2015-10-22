@@ -84,6 +84,11 @@ public class ClientWorker implements Runnable
 		
 	}
 	
+	public void setGraf(Graf g)
+	{
+		this.graf = g;
+	}
+	
 	public int getId()
 	{
 		return id;

@@ -2,12 +2,12 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="/home/aleksa/git/Server-BusPlusPlus/lib/sqlite-jdbc-3.8.11.1.jar"/>
-	<classpathentry kind="lib" path="/home/aleksa/git/Server-BusPlusPlus/lib/gson-2.3.1-sources.jar"/>
-	<classpathentry kind="lib" path="/home/aleksa/git/Server-BusPlusPlus/lib/gson-2.3.1-javadoc.jar"/>
-	<classpathentry kind="lib" path="/home/aleksa/git/Server-BusPlusPlus/lib/gson-2.3.1.jar"/>
-	<classpathentry kind="lib" path="/home/aleksa/git/Server-BusPlusPlus/lib/mariadb-java-client-1.1.9.jar"/>
-	<classpathentry kind="lib" path="/home/aleksa/git/Server-BusPlusPlus/lib/mariadb-java-client-1.1.9-sources.jar"/>
-	<classpathentry kind="lib" path="/home/aleksa/git/Server-BusPlusPlus/lib/mariadb-java-client-1.1.9-javadoc.jar"/>
+	<classpathentry kind="lib" path="lib/gson-2.3.1-javadoc.jar"/>
+	<classpathentry kind="lib" path="lib/gson-2.3.1-sources.jar"/>
+	<classpathentry kind="lib" path="lib/gson-2.3.1.jar"/>
+	<classpathentry kind="lib" path="lib/mariadb-java-client-1.1.9-javadoc.jar"/>
+	<classpathentry kind="lib" path="lib/mariadb-java-client-1.1.9-sources.jar"/>
+	<classpathentry kind="lib" path="lib/mariadb-java-client-1.1.9.jar"/>
+	<classpathentry kind="lib" path="lib/sqlite-jdbc-3.8.11.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -13,7 +13,7 @@ public class Request
 	public Double destLat = null;
 	public Double destLon = null;
 	public Integer linija = null;
-	//public String message = null;
+	public String passwd = null;			//sifra za reinicijalizaciju servera
 	public Double dbVer = null;
 	
 	//crowd sourcing
@@ -40,7 +40,20 @@ public class Request
 		this.crowdSensing = crowdSensing;
 	}
 	
-
+	public Request(Integer type, Double srcLat, Double srcLon, Double destLat, 
+			Double destLon, Integer linija, String passwd,
+			Double dbVer, CSInfo crowdSensing)
+	{
+		this.type = type;
+		this.srcLat = srcLat;
+		this.srcLon = srcLon;
+		this.destLat = destLat;
+		this.destLon = destLon;
+		this.linija = linija;
+		this.dbVer = dbVer;
+		this.passwd = passwd;
+		this.crowdSensing = crowdSensing;
+	}
 	
 	@Override
 	public String toString()

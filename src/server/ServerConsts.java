@@ -17,6 +17,7 @@ public final class ServerConsts
 	public static double rVoznjeDBVer = 0;
 	public static double putanjeDBVer = 0;
 	public static final int vremeVazenjaKontrole = 900;								//u sekundama
+	public static final String passwordZaReinicijalizaciju = "dahaka";
 	
 	public static final Double raspodelaBrzina[] = { 
 														8.3,	//00-01
