@@ -4,6 +4,8 @@ import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 
+import server.ServerConsts;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -186,10 +188,21 @@ public class Linija
 		LocalDateTime currentTime = LocalDateTime.now();
 		int curHour = currentTime.getHour();
 		int curMin = currentTime.getMinute();
-		raspodelaBrzina[curHour] = raspodelaBrzina[curHour]*0.5 + speed*0.5;
+		double brzina = raspodelaBrzina[curHour]*0.5 + speed*0.5;
+		
+		if(brzina < ServerConsts.maksimalnaBrzinaAutobusa)
+			raspodelaBrzina[curHour] = brzina;
+		else
+			raspodelaBrzina[curHour] = ServerConsts.maksimalnaBrzinaAutobusa;
 		
 		if(curMin > 30 && curHour < 24)
-			raspodelaBrzina[curHour+1] = raspodelaBrzina[curHour+1]*0.75 + speed*0.25;
+		{
+			brzina = raspodelaBrzina[curHour+1]*0.75 + speed*0.25;
+			if(brzina < ServerConsts.maksimalnaBrzinaAutobusa)
+				raspodelaBrzina[curHour+1] = brzina;
+			else 
+				raspodelaBrzina[curHour+1] = ServerConsts.maksimalnaBrzinaAutobusa; 
+		}
 		
 		/*System.out.println("CS brzina za liniju " + broj + smer + " u " + curHour + "h prepravljena na " + 
 							raspodelaBrzina[curHour]);*/
