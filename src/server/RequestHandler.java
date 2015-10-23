@@ -274,8 +274,8 @@ public class RequestHandler
 		if(req.linija<1 || req.linija>=linije.length)
 			return;
 		
-			String brojLinije = linije[req.linija].broj.replace("*", "");
-			String smer = linije[req.linija].smer;
+		String brojLinije = linije[req.linija].broj.replace("*", "");
+		String smer = linije[req.linija].smer;
 		
 		Linija l = null;
 		for(int i = 0; i < linije.length; ++i)
@@ -726,7 +726,7 @@ public class RequestHandler
 		pseudoEnd.linijom = null;
 		pseudoEnd.prethodnaStanica = pseudoStart;
 		pseudoEnd.cenaPutanje = calcDistance(req.srcLat, req.srcLon, req.destLat, req.destLon)/brzinaPesacenja;
-		pseudoStart.heuristika = calcDistance(req.srcLat, req.srcLon, req.destLat, req.destLon)/ServerConsts.brzinaAutobusa;
+		pseudoStart.heuristika = calcDistance(req.srcLat, req.srcLon, req.destLat, req.destLon)/ServerConsts.maksimalnaBrzinaAutobusa;
 		pseudoStart.linijom = null;
 		pseudoStart.prethodnaStanica = null;
 		pseudoStart.cenaPutanje = 0.0;
@@ -743,7 +743,7 @@ public class RequestHandler
 		{
 			if(stanice[i] != null)
 			{
-				stanice[i].heuristika = calcDistance(stanice[i], req.destLat, req.destLon)/ServerConsts.brzinaAutobusa;
+				stanice[i].heuristika = calcDistance(stanice[i], req.destLat, req.destLon)/ServerConsts.maksimalnaBrzinaAutobusa;
 				stanice[i].cenaPutanje = calcDistance(stanice[i], req.srcLat, req.srcLon)/brzinaPesacenja;
 				
 				stanice[i].linijom = null;
